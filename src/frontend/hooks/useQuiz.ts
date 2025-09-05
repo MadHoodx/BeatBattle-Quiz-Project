@@ -19,6 +19,8 @@ export function useQuiz(questions: any[], totalQuestions: number) {
   const [score, setScore] = useState(0);
   const [lastAnswer, setLastAnswer] = useState<'correct' | 'wrong' | null>(null);
 
+  const { user } = useAuth();
+
   const handleClipEnd = () => {
     setIsPlaying(false);
   };
@@ -60,13 +62,10 @@ export function useQuiz(questions: any[], totalQuestions: number) {
   };
 
   useEffect(() => {
-    if (isFinished) {
-      const { user } = useAuth();
-      if (user) {
-        saveScore(user.id, score, questions.length);
-      }
+    if (isFinished && user) {
+      saveScore(user.id, score, questions.length);
     }
-  }, [isFinished, score]);
+  }, [isFinished, score, user]);
 
   // When audio starts playing
   useEffect(() => {

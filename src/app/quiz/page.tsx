@@ -41,43 +41,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-pink-900/20"></div>
       </div>
       
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 bg-[#070B1E]/80 backdrop-blur-md border-b border-white/5 z-50">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
-          <button 
-            onClick={() => router.push('/')}
-            className="text-white/70 hover:text-white transition-all hover:scale-105 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Menu
-          </button>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="text-sm px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-                <span className="text-white/70">Score: </span>
-                <span className="font-bold text-purple-400">{score}</span>
-              </div>
-              <div className="text-sm px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-                <span className="text-white/70">Round: </span>
-                <span className="font-bold text-purple-400">{currentIndex + 1}/{questions.length}</span>
-              </div>
-            </div>
-            {/* Volume Control in Header */}
-            <div className="p-1.5 rounded-xl bg-white/5 border border-white/10">
-              <AudioComponent
-                src={currentQuestion.audio}
-                start={currentQuestion.start}
-                end={currentQuestion.end}
-                autoPlay
-                onClipEnd={handleClipEnd}
-                minimal
-              />
-            </div>
-          </div>
-        </div>
-      </header>
+  {/* Header removed: use global layout/header with HamburgerMenu for consistency */}
 
       <main className="relative z-10">
         {!isFinished ? (

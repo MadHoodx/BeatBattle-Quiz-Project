@@ -32,54 +32,79 @@ export default function Home() {
   const goToMode = () => router.push("/mode");
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#070B1E] text-white px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#070B1E] text-white px-4 relative overflow-hidden">
+      {/* Animated floating music notes background */}
+      <div className="pointer-events-none absolute inset-0 z-0">
+        {[...Array(12)].map((_, i) => (
+          <span
+            key={i}
+            className={`absolute text-3xl opacity-30 animate-float-note`}
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 4}s`,
+              color: i % 3 === 0 ? '#7c6cff' : i % 3 === 1 ? '#ffb84d' : '#ff4d6d',
+            }}
+          >
+            {i % 2 === 0 ? '🎵' : '🎶'}
+          </span>
+        ))}
+      </div>
       {/* Logo & Title */}
-      <header className="mb-8 flex flex-col items-center">
-        <Image src="/logo.svg" alt="BeatBattle Logo" width={80} height={80} className="mb-2" />
-        <h1 className="text-4xl font-bold">BeatBattle</h1>
-        <p className="text-lg text-white/70 mt-2 text-center max-w-md">
+      <header className="mb-8 flex flex-col items-center z-10 animate-fadein">
+        <h1 className="text-5xl font-extrabold mt-4 bg-gradient-to-r from-[#7c6cff] via-[#ffb84d] to-[#ff4d6d] bg-clip-text text-transparent animate-gradient-move drop-shadow-lg">
+          BeatBattle
+        </h1>
+        <p className="text-lg text-white/80 mt-3 text-center max-w-md animate-fadein-slow">
           ทายเพลง K-Drama OST และแข่งกับเพื่อน! สนุกกับการทดสอบความรู้เพลงและดูอันดับของคุณบน Leaderboard
         </p>
       </header>
 
 
       {/* Main Action Buttons */}
-      {!user ? (
-        <div className="flex flex-col gap-4 mb-8 w-full max-w-xs">
-          <button
-            className="w-full px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 font-semibold text-xl shadow-lg hover:scale-105 hover:from-purple-600 hover:to-pink-600 transition"
-            onClick={goToLogin}
-          >
-            Login / Sign Up
-          </button>
-          <button
-            className="w-full px-8 py-4 rounded-2xl bg-white/10 border border-white/20 text-white/80 font-semibold text-xl shadow-lg hover:bg-white/20 hover:text-white transition"
-            onClick={goToMode}
-          >
-            เล่นแบบ Guest
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-4 mb-8 w-full max-w-xs">
-          <div className="text-lg text-white/80 mb-2">Welcome, {profile?.username || user.email}!</div>
-          <button
-            className="w-full px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 font-semibold text-xl shadow-lg hover:scale-105 hover:from-purple-600 hover:to-pink-600 transition"
-            onClick={goToMode}
-          >
-            เริ่มเล่นเลย!
-          </button>
-        </div>
-      )}
+      <div className="z-10 w-full max-w-xs animate-fadein-slow">
+        {!user ? (
+          <div className="flex flex-col gap-4 mb-8">
+            <button
+              className="w-full px-8 py-4 rounded-2xl bg-gradient-to-r from-[#7c6cff] to-[#ff4d6d] font-bold text-xl shadow-xl hover:scale-105 hover:from-[#6c63ff] hover:to-[#ff4d6d] transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-[#7c6cff]"
+              onClick={goToLogin}
+            >
+              Login / Sign Up
+            </button>
+            <button
+              className="w-full px-8 py-4 rounded-2xl bg-white/10 border border-white/20 text-white/90 font-semibold text-xl shadow-lg hover:bg-white/20 hover:text-white transition"
+              onClick={goToMode}
+            >
+              เล่นแบบ Guest
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4 mb-8">
+            <div className="text-lg text-white/90 mb-2 animate-fadein">Welcome, {profile?.username || user.email}!</div>
+            <button
+              className="w-full px-8 py-4 rounded-2xl bg-gradient-to-r from-[#7c6cff] to-[#ff4d6d] font-bold text-xl shadow-xl hover:scale-105 hover:from-[#6c63ff] hover:to-[#ff4d6d] transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-[#7c6cff]"
+              onClick={goToMode}
+            >
+              เริ่มเล่นเลย!
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Leaderboard: show only if logged in */}
       {user && (
-        <section className="w-full max-w-md mb-8">
-          <h2 className="text-2xl font-bold mb-4">🏆 Leaderboard</h2>
-          <ul className="bg-white/5 rounded-xl divide-y divide-white/10">
+        <section className="w-full max-w-md mb-8 z-10 animate-fadein-slow">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <span className="inline-block animate-bounce">🏆</span> Leaderboard
+          </h2>
+          <ul className="bg-white/5 rounded-xl divide-y divide-white/10 shadow-lg">
             {leaderboard.map((entry, idx) => (
               <li key={entry.username} className="flex justify-between items-center px-6 py-3">
-                <span className="font-semibold">{idx + 1}. {entry.username}</span>
-                <span className="font-bold text-purple-300">{entry.score}</span>
+                <span className="font-semibold flex items-center gap-2">
+                  <span className={`inline-block w-6 h-6 rounded-full text-center font-bold text-white ${idx === 0 ? 'bg-[#ffd700] text-[#23244a]' : idx === 1 ? 'bg-[#b5baff]' : idx === 2 ? 'bg-[#ffb84d]' : 'bg-[#23244a]/60'}`}>{idx + 1}</span>
+                  {entry.username}
+                </span>
+                <span className="font-bold text-[#7c6cff]">{entry.score}</span>
               </li>
             ))}
           </ul>
@@ -87,9 +112,38 @@ export default function Home() {
       )}
 
       {/* Footer */}
-      <footer className="mt-auto py-4 text-white/50 text-sm text-center w-full">
-        © 2025 BeatBattle | <a href="mailto:contact@beatbattle.com" className="underline">Contact</a>
+      <footer className="mt-auto py-4 text-white/50 text-sm text-center w-full z-10 animate-fadein-slow">
+        © 2025 <span className="font-bold text-[#7c6cff]">BeatBattle</span> | <a href="mailto:contact@beatbattle.com" className="underline hover:text-[#ff4d6d] transition">Contact</a>
       </footer>
+      {/* Animations */}
+      <style jsx global>{`
+        @keyframes float-note {
+          0% { transform: translateY(0) scale(1); opacity: 0.3; }
+          50% { transform: translateY(-30px) scale(1.1); opacity: 0.5; }
+          100% { transform: translateY(0) scale(1); opacity: 0.3; }
+        }
+        .animate-float-note {
+          animation: float-note 4s ease-in-out infinite;
+        }
+        @keyframes gradient-move {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 100% 50%; }
+        }
+        .animate-gradient-move {
+          background-size: 200% 200%;
+          animation: gradient-move 3s linear infinite alternate;
+        }
+        @keyframes fadein {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: none; }
+        }
+        .animate-fadein {
+          animation: fadein 1s cubic-bezier(.4,0,.2,1) both;
+        }
+        .animate-fadein-slow {
+          animation: fadein 1.6s cubic-bezier(.4,0,.2,1) both;
+        }
+      `}</style>
     </div>
   );
 }
