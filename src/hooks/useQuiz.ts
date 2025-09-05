@@ -3,84 +3,73 @@ import { useState, useEffect } from 'react';
 export type QuizState = {
   currentIndex: number;
   selected: string | null;
-  waiting: boolean;
-  countdown: number;
+  isPlaying: boolean;
+  isRevealing: boolean;
   isFinished: boolean;
 };
 
 export function useQuiz(totalQuestions: number) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
-  const [waiting, setWaiting] = useState(false);
-  const [countdown, setCountdown] = useState(3);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isRevealing, setIsRevealing] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [score, setScore] = useState(0);
   const [lastAnswer, setLastAnswer] = useState<'correct' | 'wrong' | null>(null);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (waiting && countdown > 0) {
-      timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    }
-    if (waiting && countdown === 0) {
-      setWaiting(false);
-      
-      if (!selected) {
-        setSelected("timeout");
-        
-        setTimeout(() => {
-          if (currentIndex < totalQuestions - 1) {
-            setCurrentIndex(i => i + 1);
-            setSelected(null);
-            setWaiting(false);
-            setCountdown(3);
-          } else {
-            setIsFinished(true);
-          }
-        }, 2000);
-      }
-    }
-    return () => clearTimeout(timer);
-  }, [waiting, countdown, selected]);
-
   const handleClipEnd = () => {
-    setWaiting(true);
-    setCountdown(3);
+    setIsPlaying(false);
+  };
+
+  const moveToNextQuestion = () => {
+    if (currentIndex < totalQuestions - 1) {
+      setCurrentIndex(i => i + 1);
+      setSelected(null);
+      setIsRevealing(false);
+      setLastAnswer(null);
+      // Reset isPlaying to trigger the useEffect that starts playing
+      setIsPlaying(false);
+    } else {
+      setIsFinished(true);
+    }
   };
 
   const handleSelect = (choice: string, correctAnswer: string) => {
+    if (isRevealing || selected) return; // Allow selection even if not playing
+    
     setSelected(choice);
     const isCorrect = choice === correctAnswer;
     setLastAnswer(isCorrect ? 'correct' : 'wrong');
     if (isCorrect) setScore(s => s + 1);
     
-    // After 2 seconds, move to the next question if there is one
-    setTimeout(() => {
-      if (currentIndex < totalQuestions - 1) {
-        setCurrentIndex(i => i + 1);
-        setSelected(null);
-        setWaiting(false);
-        setCountdown(3);
-        setLastAnswer(null);
-      } else {
-        setIsFinished(true);
-      }
-    }, 2000);
+    setIsRevealing(true);
+    // Move to next question after showing result
+    setTimeout(moveToNextQuestion, 2000);
   };
 
   const resetQuiz = () => {
     setCurrentIndex(0);
     setSelected(null);
-    setWaiting(false);
-    setCountdown(3);
+    setIsPlaying(false);
+    setIsRevealing(false);
     setIsFinished(false);
+    setScore(0);
+    setLastAnswer(null);
   };
+
+  // When audio starts playing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsPlaying(true);
+    }, 500); // Small delay to ensure audio is ready
+    return () => clearTimeout(timer);
+  }, [currentIndex]);
 
   return {
     currentIndex,
     selected,
-    waiting,
-    countdown,
+    isPlaying,
+    isRevealing,
     isFinished,
     score,
     lastAnswer,
