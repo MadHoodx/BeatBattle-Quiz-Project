@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { saveScore } from '../../backend/services/database/db';
 
 export type QuizState = {
   currentIndex: number;
@@ -8,7 +10,7 @@ export type QuizState = {
   isFinished: boolean;
 };
 
-export function useQuiz(totalQuestions: number) {
+export function useQuiz(questions: any[], totalQuestions: number) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -56,6 +58,15 @@ export function useQuiz(totalQuestions: number) {
     setScore(0);
     setLastAnswer(null);
   };
+
+  useEffect(() => {
+    if (isFinished) {
+      const { user } = useAuth();
+      if (user) {
+        saveScore(user.id, score, questions.length);
+      }
+    }
+  }, [isFinished, score]);
 
   // When audio starts playing
   useEffect(() => {

@@ -22,7 +22,7 @@ export default function Home() {
     handleSelect,
     setSelected,
     resetQuiz
-  } = useQuiz(questions.length);
+  } = useQuiz(questions, questions.length);
 
   // Add animations when component mounts
   useEffect(() => {
