@@ -1,5 +1,5 @@
-import { Song } from '../types/song';
-import { Question } from '../types/questions';
+import { Song } from '../../../shared/types/song';
+import { Question } from '../../../shared/types/questions';
 
 function shuffleArray<T>(array: T[]): T[] {
   const newArray = [...array];

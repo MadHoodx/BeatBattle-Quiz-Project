@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useEffect, useState } from 'react';
+import '../../styles/globals.css';
 
 type VolumeControlProps = {
   volume: number;

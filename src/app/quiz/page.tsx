@@ -3,10 +3,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import AudioComponent from "../component/audioComponent";
-import ChoiceButton from "../component/ChoiceButton";
-import { questions } from "../../data/questions";
-import { useQuiz } from "../../hooks/useQuiz";
+import AudioComponent from "../../frontend/components/audio/audioComponent";
+import ChoiceButton from "../../frontend/components/quiz/ChoiceButton";
+import { questions } from "../../backend/services/quiz/questions";
+import { useQuiz } from "../../frontend/hooks/useQuiz";
 
 export default function Home() {
   const router = useRouter();
