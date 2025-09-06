@@ -1,9 +1,9 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useQuiz } from "@/frontend/hooks/useQuiz";
-import { questions } from "@/data/questions";
-import ChoiceButton from "@/frontend/components/quiz/ChoiceButton";
+import { useQuiz } from "@/hooks/useQuiz";
+import { questions } from "../../../../data/questions";
+import ChoiceButton from "@/components/quiz/ChoiceButton";
 
 export default function QuizPage() {
   const router = useRouter();

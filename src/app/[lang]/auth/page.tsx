@@ -2,9 +2,9 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLangHref } from "../../../frontend/components/common/LangLink";
-import { supabase } from "../../../lib/supabase";
-import { useI18n } from '../../../frontend/context/I18nContext';
+import { useLangHref } from "@/components/common/LangLink";
+import { supabase } from "@/lib/supabase";
+import { useI18n } from '@/context/I18nContext';
 
 export default function AuthPage() {
   const { t } = useI18n();

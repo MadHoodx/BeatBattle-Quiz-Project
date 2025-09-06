@@ -1,9 +1,9 @@
 "use client";
 import React, { ReactNode } from "react";
-import { AuthProvider } from "../../frontend/context/AuthContext";
-import HamburgerMenu from "../../frontend/components/common/HamburgerMenu";
-import Avatar from "../../frontend/components/common/Avatar";
-import LogoHomeButton from "../../frontend/components/common/LogoHomeButton";
+import { AuthProvider } from "@/context/AuthContext";
+import HamburgerMenu from "@/components/common/HamburgerMenu";
+import Avatar from "@/components/common/Avatar";
+import LogoHomeButton from "@/components/common/LogoHomeButton";
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = React.useState(false);

@@ -1,12 +1,12 @@
 
 "use client";
-import { useAuth } from "../../../frontend/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
-import { getProfile } from "../../../backend/services/database/db";
-import { supabase } from "../../../lib/supabase";
+import { getProfile } from "@/server/services/database/db";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { useLangHref } from "../../../frontend/components/common/LangLink";
-import { useI18n } from '../../../frontend/context/I18nContext';
+import { useLangHref } from "@/components/common/LangLink";
+import { useI18n } from '@/context/I18nContext';
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();

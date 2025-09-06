@@ -1,7 +1,7 @@
 
 "use client";
 import { useRouter, useParams } from "next/navigation";
-import { useI18n } from "../../../frontend/context/I18nContext";
+import { useI18n } from "@/context/I18nContext";
 import { useMemo } from "react";
 
 const categories = [

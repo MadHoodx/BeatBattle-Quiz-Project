@@ -1,9 +1,9 @@
 
 "use client";
-import { useI18n } from '../../../frontend/context/I18nContext';
+import { useI18n } from '@/context/I18nContext';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useLangHref } from '../../../frontend/components/common/LangLink';
+import { useLangHref } from '@/components/common/LangLink';
 
 function MusicNotesBackground() {
   return (

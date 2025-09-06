@@ -1,7 +1,7 @@
-import { I18nProvider } from "../../frontend/context/I18nContext";
+import { I18nProvider } from "@/context/I18nContext";
 import type { Metadata } from "next";
-import "../../frontend/styles/globals.css";
-import ClientLayout from "../_components/ClientLayout";
+import "@/styles/globals.css";
+import ClientLayout from "@/components/ClientLayout";
 
 export const metadata: Metadata = {
   title: "SeoulTune Quiz",

@@ -1,4 +1,4 @@
-import { useI18n } from '../../../frontend/context/I18nContext';
+import { useI18n } from '@/context/I18nContext';
 
 export default function ContactPage() {
   const { t } = useI18n();

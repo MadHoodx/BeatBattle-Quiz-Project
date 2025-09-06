@@ -1,11 +1,11 @@
 "use client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useLangHref } from "../../frontend/components/common/LangLink";
-import { useAuth } from "../../frontend/context/AuthContext";
+import { useLangHref } from "@/components/common/LangLink";
+import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
-import { getProfile } from "../../backend/services/database/db";
-import { useI18n } from '../../frontend/context/I18nContext';
+import { getProfile } from "@/server/services/database/db";
+import { useI18n } from '@/context/I18nContext';
 
 const mockLeaderboard = [
   { username: "Jisoo", score: 10 },

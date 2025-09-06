@@ -31,7 +31,7 @@ export function I18nProvider({ lang: initialLang, children }: { lang: string; ch
 
   // Load messages when lang changes
   useEffect(() => {
-    import(`../../locales/${lang}.json`).then(mod => setMessages(mod.default || mod));
+    import(`../locales/${lang}.json`).then(mod => setMessages(mod.default || mod));
   }, [lang]);
 
   // Persist lang to localStorage and cookie
