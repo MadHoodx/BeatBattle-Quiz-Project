@@ -1,7 +1,10 @@
 
 
 import type { Metadata } from "next";
+
 import "../frontend/styles/globals.css";
+import Navbar from "../frontend/components/common/Navbar";
+import HamburgerMenu from "../frontend/components/common/HamburgerMenu";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -12,7 +15,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {children}
+        <main>
+          {children}
+        </main>
       </body>
     </html>
   );
