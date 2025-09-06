@@ -1,5 +1,8 @@
 {
   "welcome": "ようこそ",
+  "choose_mode": "モードを選択",
+  "choose_mode_desc": "ソロは自分への挑戦、マルチプレイヤーは友達と楽しもう！",
+  "tip_invite_friend": "ヒント: 友達を誘ってリアルタイムでバトルしよう！",
   "logout": "ログアウト",
   "login": "ログイン / 登録",
   "about": "概要",

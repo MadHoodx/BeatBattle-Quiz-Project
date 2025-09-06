@@ -1,5 +1,8 @@
 {
   "hero_desc": "Entrez dans l’arène du rythme ! Devinez les chansons rapidement, dépassez vos rivaux et revendiquez le trône de BeatBattle.",
+  "choose_mode": "Choisissez votre mode",
+  "choose_mode_desc": "Solo pour se challenger, Multijoueur pour s'amuser entre amis !",
+  "tip_invite_friend": "Astuce : Invitez vos amis pour une bataille musicale en temps réel !",
   "welcome": "Bienvenue",
   "logout": "Déconnexion",
   "login": "Connexion / Inscription",

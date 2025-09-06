@@ -61,7 +61,7 @@ export default function CategoryPage() {
           <button
             key={cat.key}
             className={`relative flex flex-col items-center rounded-2xl p-6 transition-all duration-300 cursor-pointer bg-gradient-to-br ${cat.gradient} ${cat.ring} hover:scale-[1.035] hover:shadow-[0_4px_24px_0_rgba(124,108,255,0.18)] shadow-xl focus:outline-none focus:ring-2 focus:ring-[#ffb84d] group min-h-[200px] min-w-[180px]`}
-            onClick={() => router.push(`/${lang}/quiz?category=${cat.key}`)}
+            onClick={() => router.push(useLangHref(`/quiz?category=${cat.key}`) as string)}
             aria-label={cat.label}
             style={{}}
           >

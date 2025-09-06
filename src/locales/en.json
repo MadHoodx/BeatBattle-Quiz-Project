@@ -1,5 +1,8 @@
 {
   "welcome": "Welcome",
+  "choose_mode": "Choose your mode",
+  "choose_mode_desc": "Solo for self-challenge, Multiplayer for fun with friends!",
+  "tip_invite_friend": "Tip: Invite your friends for a real-time music battle!",
   "logout": "Logout",
   "login": "Login / Register",
   "about": "About",

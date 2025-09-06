@@ -2,6 +2,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLangHref } from "../../../frontend/components/common/LangLink";
 import { supabase } from "../../../lib/supabase";
 import { useI18n } from '../../../frontend/context/I18nContext';
 
@@ -25,12 +26,12 @@ export default function AuthPage() {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         // username setup page
-        setTimeout(() => router.push("/profile/username"), 500);
+  setTimeout(() => router.push(useLangHref("/profile/username") as string), 500);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         setSuccess("Login success! Redirecting...");
-        setTimeout(() => router.push("/"), 1000);
+  setTimeout(() => router.push(useLangHref("/") as string), 1000);
       }
     } catch (err: any) {
       setError(err.message);

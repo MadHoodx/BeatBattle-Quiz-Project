@@ -4,7 +4,7 @@ import FlagIconFactory from 'react-flag-icon-css';
 const FlagIcon = FlagIconFactory(React, { useCssModules: false });
 import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "../../context/I18nContext";
-import Link from "next/link";
+import LangLink, { useLangHref } from "./LangLink";
 import { useAuth } from "../../context/AuthContext";
 import Avatar from "../common/Avatar";
 import { getProfile } from "../../../backend/services/database/db";
@@ -52,14 +52,13 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
   // change path immediately when language changes
   const handleLangChange = (newLang: string) => {
     if (newLang === lang) return;
+    // Use useLangHref to get the new path with the newLang
     const segments = pathname.split('/');
-    // If segment[1] is a language code (2-5 characters)
     if (segments[1] && /^[a-z]{2}(-[a-z]{2,3})?$/i.test(segments[1])) {
       segments[1] = newLang;
     } else {
       segments.splice(1, 0, newLang);
     }
-    // Remove duplicate language code segments (e.g. /th/ar/auth -> /th/auth)
     while (segments[2] && /^[a-z]{2}(-[a-z]{2,3})?$/i.test(segments[2])) {
       segments.splice(2, 1);
     }
@@ -97,28 +96,28 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
             </div>
             <ul className="mt-8 space-y-4 px-7">
               <li>
-                <Link href={`/${lang}/category`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#6c63ff]/20 transition shadow-md">
+                <LangLink href="/category" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#6c63ff]/20 transition shadow-md">
                   <span className="text-3xl" role="img" aria-label="music-battle">
                     <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" fill="#7c6cff"/><path d="M12 20V12H20V20" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14.5" cy="18.5" r="1.5" fill="#fff"/><circle cx="17.5" cy="18.5" r="1.5" fill="#fff"/></svg>
                   </span>
                   {t('music_battle')}
-                </Link>
+                </LangLink>
               </li>
               <li>
-                <Link href={`/${lang}/category`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffb84d]/20 transition shadow-md">
+                <LangLink href="/category" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffb84d]/20 transition shadow-md">
                   <span className="text-3xl" role="img" aria-label="battle-friend">
                     <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="6" y="8" width="20" height="16" rx="3" fill="#ffb84d"/><rect x="10" y="4" width="12" height="6" rx="2" fill="#fff"/></svg>
                   </span>
                   {t('battle_friend')}
-                </Link>
+                </LangLink>
               </li>
               <li>
-                <Link href={`/${lang}/leaderboard`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffd700]/20 transition shadow-md">
+                <LangLink href="/leaderboard" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffd700]/20 transition shadow-md">
                   <span className="text-3xl" role="img" aria-label="leaderboard">
                     <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="22" textAnchor="middle" fontSize="16" fill="#23244a" fontWeight="bold">🏆</text></svg>
                   </span>
                   {t('leaderboard')}
-                </Link>
+                </LangLink>
               </li>
             </ul>
             <div className="mt-10 border-t border-[#23244a] pt-6 px-7">
@@ -131,14 +130,14 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
                       <div className="text-xs text-gray-400">{user?.email}</div>
                     </div>
                   </div>
-                  <Link href={`/${lang}/profile`} onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold mb-2">{t('profile')}</Link>
+                  <LangLink href="/profile" onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold mb-2">{t('profile')}</LangLink>
                   <button
                     className="w-full text-left py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#ff4d6d]/20 text-[#ff4d6d] font-bold transition"
                     onClick={() => { signOut(); setOpen(false); }}
                   >{t('logout')}</button>
                 </>
               ) : (
-                <Link href={`/${lang}/auth`} onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold">{t('login')}</Link>
+                <LangLink href="/auth" onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold">{t('login')}</LangLink>
               )}
             </div>
             <div className="mt-4 px-7 pb-7">
@@ -177,7 +176,7 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
               </div>
             </div>
             <div className="px-7 pb-5 text-xs text-[#b5baff] mt-4">
-              <Link href={`/${lang}/about`} onClick={() => setOpen(false)} className="hover:underline">{t('about')}</Link> · <Link href={`/${lang}/howto`} onClick={() => setOpen(false)} className="hover:underline">{t('howto')}</Link> · <Link href={`/${lang}/contact`} onClick={() => setOpen(false)} className="hover:underline">{t('contact')}</Link>
+              <LangLink href="/about" onClick={() => setOpen(false)} className="hover:underline">{t('about')}</LangLink> · <LangLink href="/howto" onClick={() => setOpen(false)} className="hover:underline">{t('howto')}</LangLink> · <LangLink href="/contact" onClick={() => setOpen(false)} className="hover:underline">{t('contact')}</LangLink>
             </div>
           </nav>
         </>

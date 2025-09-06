@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLangHref } from "../../../frontend/components/common/LangLink";
 import { useAuth } from "../../../frontend/context/AuthContext";
 import { updateProfile } from "../../../backend/services/database/db";
 import { supabase } from "../../../lib/supabase";
@@ -34,7 +35,8 @@ export default function UsernamePage() {
         password: ""
       });
       // ไม่ต้องสนใจ error เพราะ session อาจ active อยู่แล้ว
-      router.push("/");
+  const langHome = useLangHref("/");
+  router.push(langHome);
     } catch (err: any) {
       setError(err.message);
     } finally {

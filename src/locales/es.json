@@ -1,5 +1,8 @@
 {
   "welcome": "Bienvenido",
+  "choose_mode": "Elige tu modo",
+  "choose_mode_desc": "¡Solo para desafiarte, Multijugador para divertirte con amigos!",
+  "tip_invite_friend": "Consejo: ¡Invita a tus amigos a una batalla musical en tiempo real!",
   "logout": "Cerrar sesión",
   "login": "Iniciar sesión / Registrarse",
   "about": "Acerca de",

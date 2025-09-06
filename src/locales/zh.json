@@ -1,5 +1,8 @@
 {
   "welcome": "欢迎",
+  "choose_mode": "选择模式",
+  "choose_mode_desc": "单人挑战自我，多人和朋友一起嗨！",
+  "tip_invite_friend": "提示：邀请朋友来一场实时音乐对决吧！",
   "logout": "登出",
   "login": "登录 / 注册",
   "about": "关于",

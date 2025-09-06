@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getProfile } from "../../../backend/services/database/db";
 import { supabase } from "../../../lib/supabase";
 import { useRouter } from "next/navigation";
+import { useLangHref } from "../../../frontend/components/common/LangLink";
 import { useI18n } from '../../../frontend/context/I18nContext';
 
 export default function ProfilePage() {
@@ -37,7 +38,7 @@ export default function ProfilePage() {
         </div>
         <button
           className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 font-semibold text-lg hover:from-pink-600 hover:to-purple-600 transition"
-          onClick={async () => { await signOut(); router.push("/"); }}
+          onClick={async () => { await signOut(); router.push(useLangHref("/") as string); }}
         >
           {t('logout')}
         </button>

@@ -1,5 +1,8 @@
 {
   "hero_desc": "進入節奏競技場！快速猜歌，超越對手，奪取 BeatBattle 王座！",
+  "choose_mode": "選擇模式",
+  "choose_mode_desc": "單人挑戰自我，多人和朋友一起玩！",
+  "tip_invite_friend": "提示：邀請朋友來一場即時音樂對決吧！",
   "welcome": "歡迎",
   "logout": "登出",
   "login": "登入 / 註冊",

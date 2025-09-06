@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useLangHref } from "../../frontend/components/common/LangLink";
 import { useAuth } from "../../frontend/context/AuthContext";
 import { useState, useEffect } from "react";
 import { getProfile } from "../../backend/services/database/db";
@@ -29,8 +30,14 @@ export default function Home() {
 
   // TODO: fetch real leaderboard data here
 
-  const goToLogin = () => router.push("/auth");
-  const goToMode = () => router.push("/mode");
+  const { lang } = useI18n();
+  const loginHref = useLangHref("/auth");
+  const modeHref = useLangHref("/mode");
+  const goToLogin = () => router.push(typeof loginHref === 'string' ? loginHref : `/${lang}/auth`);
+  const goToMode = () => {
+    console.log('goToMode', { modeHref, lang });
+    router.push(typeof modeHref === 'string' ? modeHref : `/${lang}/mode`);
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#070B1E] text-white px-4 relative overflow-hidden">

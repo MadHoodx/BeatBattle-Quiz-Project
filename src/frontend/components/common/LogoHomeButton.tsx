@@ -1,22 +1,17 @@
 "use client";
-import { useRouter } from "next/navigation";
+import LangLink from './LangLink';
 export default function LogoHomeButton() {
-  const router = useRouter();
   return (
-    <button
-      onClick={() => router.push("/")}
-      aria-label="Go to home"
-      className="ml-4 flex items-center cursor-pointer group"
-      type="button"
-      style={{ outline: 'none' }}
-    >
-      <img src="/logo.png" alt="BeatBattle Logo" style={{ width: 48, height: 48, objectFit: 'contain' }} />
-      <span className="sr-only">Home</span>
+    <span className="ml-4 flex items-center cursor-pointer group">
+      <LangLink href="/" aria-label="Go to home">
+        <img src="/logo.png" alt="BeatBattle Logo" style={{ width: 48, height: 48, objectFit: 'contain' }} />
+        <span className="sr-only">Home</span>
+      </LangLink>
       <style jsx>{`
-        button.group:hover img, button.group:focus img {
+        .group:hover img, .group:focus img {
           filter: brightness(1.2) drop-shadow(0 0 6px #7c6cff44);
         }
       `}</style>
-    </button>
+    </span>
   );
 }
