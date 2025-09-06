@@ -54,7 +54,7 @@ export default function CategoryPage() {
         {t("selectcategory")}
       </h1>
       <p className="text-lg text-[#b5baff] mb-8 animate-fadein-slow">
-        {t("category")}: {t("choose_category_desc") || "Pick your vibe!"}
+        {t("choose_category_desc") || "Pick your vibe!"}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-5xl mt-6 auto-rows-fr">
         {catList.map((cat) => (

@@ -8,6 +8,8 @@
   "language": "Language",
   "profile": "My Profile",
   "playnow": "Play now!",
+  "music_battle": "Music Battle",
+  "battle_friend": "Battle your friend!",
   "leaderboard": "Leaderboard",
   "score": "Score",
   "timesup": "Time's up!",
@@ -36,4 +38,6 @@
   "play_kdrama_ost": "Play K-Drama OST and guess! Compete for the best score and see your name on the leaderboard.",
   "hero_desc": "Welcome to the Rhythm Arena! Guess the songs quickly and outplay your rivals to claim the BeatBattle throne!",
   "play_as_guest": "Play as Guest"
+  ,
+  "choose_category_desc": "Select a category and dive into the beats!"
 }

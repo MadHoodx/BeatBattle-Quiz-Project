@@ -8,6 +8,8 @@
   "language": "Idioma",
   "profile": "Meu perfil",
   "playnow": "Jogar agora!",
+  "music_battle": "Batalha musical",
+  "battle_friend": "Desafie seu amigo!",
   "leaderboard": "Classificação",
   "score": "Pontuação",
   "timesup": "Tempo esgotado!",
@@ -36,5 +38,6 @@
   "selected": "Selecionado!",
   "play_kdrama_ost": "Toque OST de K-Drama e adivinhe! Compita pela melhor pontuação e veja seu nome na classificação.",
   "hero_desc": "Bem-vindo à Arena do Ritmo! Adivinhe as músicas rapidamente e supere seus rivais para conquistar o trono do BeatBattle!",
-  "play_as_guest": "Jogar como convidado"
+  "play_as_guest": "Jogar como convidado",
+  "choose_category_desc": "Selecione uma categoria e mergulhe nos ritmos!"
 }

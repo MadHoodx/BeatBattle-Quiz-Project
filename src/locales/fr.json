@@ -9,6 +9,8 @@
   "language": "Langue",
   "profile": "Mon profil",
   "playnow": "Jouer maintenant!",
+  "music_battle": "Bataille musicale",
+  "battle_friend": "Défie ton ami!",
   "leaderboard": "Classement",
   "score": "Score",
   "timesup": "Temps écoulé!",
@@ -36,5 +38,6 @@
   "final_score": "Score final ✨",
   "selected": "Sélectionné!",
   "play_kdrama_ost": "Jouez à l'OST de K-Drama et devinez! Concourez pour le meilleur score et voyez votre nom sur le classement.",
-  "play_as_guest": "Jouer en tant qu'invité"
+  "play_as_guest": "Jouer en tant qu'invité",
+  "choose_category_desc": "Sélectionnez une catégorie et plongez dans les rythmes !"
 }

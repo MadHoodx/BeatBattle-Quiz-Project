@@ -9,6 +9,8 @@
   "language": "語言",
   "profile": "我的檔案",
   "playnow": "立即遊玩!",
+  "music_battle": "音樂對決",
+  "battle_friend": "挑戰你的朋友!",
   "leaderboard": "排行榜",
   "score": "分數",
   "timesup": "時間到!",
@@ -36,5 +38,6 @@
   "final_score": "最終分數 ✨",
   "selected": "已選擇!",
   "play_kdrama_ost": "播放韓劇原聲帶並猜測！爭奪最高分並在排行榜上看到你的名字。",
-  "play_as_guest": "以訪客身份遊玩"
-}
+  "play_as_guest": "以訪客身份遊玩",
+  "choose_category_desc": "選擇一個類別，沉浸在節拍中！"
+  }

@@ -75,7 +75,13 @@ export default function Home() {
               className="w-full px-8 py-4 rounded-2xl bg-white/10 border border-white/20 text-white/90 font-semibold text-xl shadow-lg hover:bg-white/20 hover:text-white transition"
               onClick={goToMode}
             >
-          {t('play_as_guest')}
+              {t('play_as_guest')}
+            </button>
+            <button
+              className="w-full px-8 py-4 rounded-2xl bg-[#ffb84d]/90 text-[#23244a] font-bold text-xl shadow-lg hover:bg-[#ffb84d] hover:text-[#23244a] transition"
+              onClick={goToMode}
+            >
+              {t('battle_friend')}
             </button>
           </div>
         ) : (
@@ -86,6 +92,12 @@ export default function Home() {
               onClick={goToMode}
             >
               {t('Play now')}
+            </button>
+            <button
+              className="w-full px-8 py-4 rounded-2xl bg-[#ffb84d]/90 text-[#23244a] font-bold text-xl shadow-lg hover:bg-[#ffb84d] hover:text-[#23244a] transition"
+              onClick={goToMode}
+            >
+              {t('battle_friend')}
             </button>
           </div>
         )}

@@ -8,6 +8,8 @@
   "language": "언어",
   "profile": "내 프로필",
   "playnow": "지금 플레이!",
+  "music_battle": "뮤직 배틀",
+  "battle_friend": "친구에게 도전하세요!",
   "leaderboard": "리더보드",
   "score": "점수",
   "timesup": "시간 종료!",
@@ -36,5 +38,6 @@
   "selected": "선택됨!",
   "play_kdrama_ost": "K-드라마 OST를 재생하고 맞혀보세요! 최고의 점수를 위해 경쟁하고 리더보드에서 내 이름을 확인하세요.",
   "hero_desc": "리듬 아레나에 입장하라! 노래를 빠르게 맞추고, 경쟁자를 뛰어넘어 BeatBattle 왕좌를 차지하라!",
-  "play_as_guest": "게스트로 플레이"
+  "play_as_guest": "게스트로 플레이",
+  "choose_category_desc": "카테고리를 선택하고 비트에 빠져보세요!"
 }

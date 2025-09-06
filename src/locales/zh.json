@@ -8,6 +8,8 @@
   "language": "语言",
   "profile": "我的资料",
   "playnow": "立即游戏!",
+  "music_battle": "音乐对决",
+  "battle_friend": "挑战你的朋友!",
   "leaderboard": "排行榜",
   "score": "分数",
   "timesup": "时间到!",
@@ -36,5 +38,6 @@
   "selected": "已选择!",
   "play_kdrama_ost": "播放韩剧原声带并猜测！争夺最高分并在排行榜上看到你的名字。",
   "hero_desc": "欢迎来到节奏竞技场！快速猜歌并击败对手，赢得 BeatBattle 王座！",
-  "play_as_guest": "以访客身份游玩"
-}
+  "play_as_guest": "以访客身份游玩",
+  "choose_category_desc": "选择一个类别，沉浸在节拍中！"
+  }

@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import FlagIconFactory from 'react-flag-icon-css';
+const FlagIcon = FlagIconFactory(React, { useCssModules: false });
 import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "../../context/I18nContext";
 import Link from "next/link";
@@ -9,19 +11,19 @@ import { getProfile } from "../../../backend/services/database/db";
 
 
 const languages = [
-  { code: "en", label: "English", flag: "🇺🇸" },
-  { code: "th", label: "ไทย", flag: "🇹🇭" },
-  { code: "jp", label: "日本語", flag: "🇯🇵" },
-  { code: "es", label: "Español", flag: "🇪🇸" },
-  { code: "fr", label: "Français", flag: "🇫🇷" },
-  { code: "de", label: "Deutsch", flag: "🇩🇪" },
-  { code: "pt", label: "Português", flag: "🇵🇹" },
-  { code: "it", label: "Italiano", flag: "🇮🇹" },
-  { code: "ru", label: "Русский", flag: "🇷🇺" },
-  { code: "ar", label: "العربية", flag: "🇸🇦" },
-  { code: "zh", label: "简体中文", flag: "🇨🇳" },
-  { code: "zh-tw", label: "繁體中文", flag: "🇹🇼" },
-  { code: "ko", label: "한국어", flag: "🇰🇷" },
+  { code: "en", label: "English", country: "US" },
+  { code: "th", label: "ไทย", country: "TH" },
+  { code: "jp", label: "日本語", country: "JP" },
+  { code: "es", label: "Español", country: "ES" },
+  { code: "fr", label: "Français", country: "FR" },
+  { code: "de", label: "Deutsch", country: "DE" },
+  { code: "pt", label: "Português", country: "PT" },
+  { code: "it", label: "Italiano", country: "IT" },
+  { code: "ru", label: "Русский", country: "RU" },
+  { code: "ar", label: "العربية", country: "SA" },
+  { code: "zh", label: "简体中文", country: "CN" },
+  { code: "zh-tw", label: "繁體中文", country: "TW" },
+  { code: "ko", label: "한국어", country: "KR" },
 ];
 
 
@@ -95,19 +97,19 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
             </div>
             <ul className="mt-8 space-y-4 px-7">
               <li>
-                <Link href={`/${lang}/quiz`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#6c63ff]/20 transition shadow-md">
-                  <span className="text-3xl" role="img" aria-label="quiz">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M8 24V20C8 17.7909 9.79086 16 12 16H20C22.2091 16 24 17.7909 24 20V24" stroke="#7c6cff" strokeWidth="2.2" strokeLinecap="round"/><circle cx="16" cy="12" r="4" fill="#7c6cff"/></svg>
+                <Link href={`/${lang}/category`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#6c63ff]/20 transition shadow-md">
+                  <span className="text-3xl" role="img" aria-label="music-battle">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" fill="#7c6cff"/><path d="M12 20V12H20V20" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14.5" cy="18.5" r="1.5" fill="#fff"/><circle cx="17.5" cy="18.5" r="1.5" fill="#fff"/></svg>
                   </span>
-                  {t('playnow')}
+                  {t('music_battle')}
                 </Link>
               </li>
               <li>
                 <Link href={`/${lang}/category`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffb84d]/20 transition shadow-md">
-                  <span className="text-3xl" role="img" aria-label="category">
+                  <span className="text-3xl" role="img" aria-label="battle-friend">
                     <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="6" y="8" width="20" height="16" rx="3" fill="#ffb84d"/><rect x="10" y="4" width="12" height="6" rx="2" fill="#fff"/></svg>
                   </span>
-                  {t('category')} / {t('mode')}
+                  {t('battle_friend')}
                 </Link>
               </li>
               <li>
@@ -150,7 +152,10 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
                   aria-expanded={showLangDropdown ? 'true' : 'false'}
                 >
                   <span className="flex items-center gap-2">
-                    {languages.find(l => l.code === lang)?.flag} {languages.find(l => l.code === lang)?.label}
+                    {(() => {
+                      const l = languages.find(l => l.code === lang);
+                      return l ? <FlagIcon code={l.country.toLowerCase()} size="lg" className="mr-2 rounded" /> : null;
+                    })()} {languages.find(l => l.code === lang)?.label}
                   </span>
                   <svg className="ml-2 h-5 w-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                 </button>
@@ -164,7 +169,7 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
                         aria-selected={lang === l.code}
                         onClick={() => { handleLangChange(l.code); setShowLangDropdown(false); }}
                       >
-                        <span className="text-xl mr-2">{l.flag}</span> {l.label}
+                        <FlagIcon code={l.country.toLowerCase()} size="lg" className="mr-2 rounded" /> {l.label}
                       </li>
                     ))}
                   </ul>

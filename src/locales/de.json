@@ -8,6 +8,8 @@
   "language": "Sprache",
   "profile": "Mein Profil",
   "playnow": "Jetzt spielen!",
+  "music_battle": "Musik-Battle",
+  "battle_friend": "Fordere deinen Freund heraus!",
   "leaderboard": "Bestenliste",
   "score": "Punktzahl",
   "timesup": "Zeit ist um!",
@@ -36,5 +38,6 @@
   "selected": "Ausgewählt!",
   "play_kdrama_ost": "Spiele K-Drama-OST und rate! Kämpfe um die beste Punktzahl und sieh deinen Namen auf der Bestenliste.",
   "hero_desc": "Willkommen in der Rhythmus-Arena! Errate die Songs schnell und übertriff deine Rivalen, um den BeatBattle-Thron zu erobern!",
-  "play_as_guest": "Als Gast spielen"
+  "play_as_guest": "Als Gast spielen",
+  "choose_category_desc": "Wähle eine Kategorie und tauche in die Beats ein!"
 }
