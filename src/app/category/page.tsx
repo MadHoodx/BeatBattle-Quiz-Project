@@ -1,22 +1,20 @@
+
 "use client";
-import { useRouter, useSearchParams } from "next/navigation";
 
 export default function CategoryPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const mode = searchParams.get("mode") || "solo";
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#070B1E] text-white">
-      <h1 className="text-3xl font-bold mb-8">เลือกหมวดเพลง</h1>
-      <div className="flex gap-8">
-        <button
-          className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold text-xl shadow-lg hover:scale-105 hover:from-purple-600 hover:to-pink-600 transition"
-          onClick={() => router.push(`/quiz?mode=${mode}&category=kdrama-ost`)}
-        >
-          Kdrama OST
-        </button>
-        {/* เพิ่มหมวดอื่นๆ ได้ที่นี่ */}
+    <div className="min-h-screen flex items-center justify-center bg-[#070B1E] text-white">
+      <div className="bg-white/5 p-10 rounded-3xl shadow-2xl border border-white/10 text-center max-w-lg w-full">
+        <h1 className="text-3xl font-bold mb-4">Category (Coming Soon)</h1>
+        <p className="text-lg text-white/70 mb-6">
+          This page will let you select quiz categories in the future.<br />
+          Stay tuned for updates!
+        </p>
+        <div className="flex justify-center">
+          <span className="inline-block px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium animate-pulse">
+            Placeholder
+          </span>
+        </div>
       </div>
     </div>
   );

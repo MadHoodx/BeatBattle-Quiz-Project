@@ -1,22 +1,36 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useI18n } from "../../context/I18nContext";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import Avatar from "../common/Avatar";
 import { getProfile } from "../../../backend/services/database/db";
-import Image from "next/image";
+
 
 const languages = [
-  { code: "en", label: "English" },
-  { code: "th", label: "ไทย" },
+  { code: "en", label: "English", flag: "🇺🇸" },
+  { code: "th", label: "ไทย", flag: "🇹🇭" },
+  { code: "jp", label: "日本語", flag: "🇯🇵" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+  { code: "pt", label: "Português", flag: "🇵🇹" },
+  { code: "it", label: "Italiano", flag: "🇮🇹" },
+  { code: "ru", label: "Русский", flag: "🇷🇺" },
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "zh", label: "简体中文", flag: "🇨🇳" },
+  { code: "zh-tw", label: "繁體中文", flag: "🇹🇼" },
+  { code: "ko", label: "한국어", flag: "🇰🇷" },
 ];
+
 
 export default function HamburgerMenu() {
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState("en");
+  const { lang, setLang, t } = useI18n();
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
@@ -25,8 +39,23 @@ export default function HamburgerMenu() {
     }
   }, [user]);
 
-  const handleLangChange = (code: string) => {
-    setLang(code);
+  // change path immediately when language changes
+  const handleLangChange = (newLang: string) => {
+    if (newLang === lang) return;
+    const segments = pathname.split('/');
+    // If segment[1] is a language code (2-5 characters)
+    if (segments[1] && /^[a-z]{2}(-[a-z]{2,3})?$/i.test(segments[1])) {
+      segments[1] = newLang;
+    } else {
+      segments.splice(1, 0, newLang);
+    }
+    // Remove duplicate language code segments (e.g. /th/ar/auth -> /th/auth)
+    while (segments[2] && /^[a-z]{2}(-[a-z]{2,3})?$/i.test(segments[2])) {
+      segments.splice(2, 1);
+    }
+    const newPath = segments.join('/') || '/';
+    router.push(newPath);
+    setLang(newLang);
   };
 
   return (
@@ -77,31 +106,31 @@ export default function HamburgerMenu() {
                      </svg>
                    </button>
                    {/* BeatBattle text only, closer to X */}
-                   <span className="font-extrabold text-2xl tracking-tight text-[#7c6cff] drop-shadow select-none cursor-pointer ml-2" onClick={() => {router.push('/'); setOpen(false);}}>BeatBattle</span>
+                   <span className="font-extrabold text-2xl tracking-tight text-[#7c6cff] drop-shadow select-none cursor-pointer ml-2" onClick={() => {router.push(`/${lang}`); setOpen(false);}}>BeatBattle</span>
                  </div>
                  <ul className="mt-8 space-y-4 px-7">
                    <li>
-                     <Link href="/quiz" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#6c63ff]/20 transition shadow-md">
+                     <Link href={`/${lang}/quiz`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#6c63ff]/20 transition shadow-md">
                        <span className="text-3xl" role="img" aria-label="quiz">
                          <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M8 24V20C8 17.7909 9.79086 16 12 16H20C22.2091 16 24 17.7909 24 20V24" stroke="#7c6cff" strokeWidth="2.2" strokeLinecap="round"/><circle cx="16" cy="12" r="4" fill="#7c6cff"/></svg>
                        </span>
-                       เล่นเกม (Music Quiz)
+                       {t('playnow')}
                      </Link>
                    </li>
                    <li>
-                     <Link href="/category" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffb84d]/20 transition shadow-md">
+                     <Link href={`/${lang}/category`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffb84d]/20 transition shadow-md">
                        <span className="text-3xl" role="img" aria-label="category">
                          <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="6" y="8" width="20" height="16" rx="3" fill="#ffb84d"/><rect x="10" y="4" width="12" height="6" rx="2" fill="#fff"/></svg>
                        </span>
-                       หมวดหมู่/โหมด
+                       {t('category')} / {t('mode')}
                      </Link>
                    </li>
                    <li>
-                     <Link href="/leaderboard" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffd700]/20 transition shadow-md">
+                     <Link href={`/${lang}/leaderboard`} onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffd700]/20 transition shadow-md">
                        <span className="text-3xl" role="img" aria-label="leaderboard">
                          <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="22" textAnchor="middle" fontSize="16" fill="#23244a" fontWeight="bold">🏆</text></svg>
                        </span>
-                       Leaderboard
+                       {t('leaderboard')}
                      </Link>
                    </li>
                  </ul>
@@ -115,32 +144,33 @@ export default function HamburgerMenu() {
                            <div className="text-xs text-gray-400">{user?.email}</div>
                          </div>
                        </div>
-                       <Link href="/profile" onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold mb-2">โปรไฟล์ของฉัน</Link>
+                       <Link href={`/${lang}/profile`} onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold mb-2">{t('profile')}</Link>
                        <button
                          className="w-full text-left py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#ff4d6d]/20 text-[#ff4d6d] font-bold transition"
                          onClick={() => { signOut(); setOpen(false); }}
-                       >ออกจากระบบ</button>
+                       >{t('logout')}</button>
                      </>
                    ) : (
-                     <Link href="/auth" onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold">เข้าสู่ระบบ / สมัครสมาชิก</Link>
+                     <Link href={`/${lang}/auth`} onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold">{t('login')}</Link>
                    )}
                  </div>
-                 <div className="mt-4 px-7 pb-7">
-                   <div className="mb-2 font-semibold text-white">ภาษา (Language)</div>
-                   <div className="flex gap-3">
-                     {languages.map(l => (
-                       <button
-                         key={l.code}
-                         className={`px-4 py-1.5 rounded-lg border text-base font-bold transition ${lang === l.code ? "bg-[#7c6cff] text-white border-[#7c6cff] shadow" : "bg-[#23244a] text-white border-[#23244a] hover:bg-[#393a6e]"}`}
-                         onClick={() => handleLangChange(l.code)}
-                       >
-                         {l.label}
-                       </button>
-                     ))}
-                   </div>
-                 </div>
+                <div className="mt-4 px-7 pb-7">
+                  <div className="mb-2 font-semibold text-white">{t('language')}</div>
+                  <select
+                    className="w-full px-4 py-2 rounded-xl border-2 text-base font-bold bg-[#23244a] text-white border-[#23244a] focus:outline-none focus:ring-2 focus:ring-[#7c6cff]"
+                    value={lang}
+                    onChange={e => handleLangChange(e.target.value)}
+                    aria-label="Select language"
+                  >
+                    {languages.map(l => (
+                      <option key={l.code} value={l.code}>
+                        {l.flag} {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                  <div className="px-7 pb-5 text-xs text-[#b5baff] mt-4">
-                   <Link href="/about" onClick={() => setOpen(false)} className="hover:underline">เกี่ยวกับ</Link> · <Link href="/howto" onClick={() => setOpen(false)} className="hover:underline">วิธีเล่น</Link> · <Link href="/contact" onClick={() => setOpen(false)} className="hover:underline">ติดต่อ</Link>
+                   <Link href={`/${lang}/about`} onClick={() => setOpen(false)} className="hover:underline">{t('about')}</Link> · <Link href={`/${lang}/howto`} onClick={() => setOpen(false)} className="hover:underline">{t('howto')}</Link> · <Link href={`/${lang}/contact`} onClick={() => setOpen(false)} className="hover:underline">{t('contact')}</Link>
                  </div>
                </nav>
              </>

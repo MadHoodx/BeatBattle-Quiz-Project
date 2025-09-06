@@ -74,7 +74,7 @@ interface Props {
   src: string;
   start?: number;
   end?: number;
-  duration?: number; // ระยะเวลาที่ต้องการเล่น (วินาที)
+  duration?: number; 
   autoPlay?: boolean;
   onClipEnd?: () => void;
   minimal?: boolean;
@@ -84,7 +84,7 @@ export default function AudioComponent({
   src, 
   start, 
   end, 
-  duration = 15, // default 15 วินาที
+  duration = 15, // default 15 seconds
   autoPlay = false, 
   onClipEnd, 
   minimal = false 
@@ -100,45 +100,45 @@ export default function AudioComponent({
   const [clipStart, setClipStart] = useState<number | null>(null);
 
   useEffect(() => {
-    // สร้าง AudioContext
+    // Create AudioContext
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     audioContextRef.current = audioContext;
 
-    // โหลดไฟล์เสียง
+    // Load audio file
     fetch(src)
       .then(response => response.arrayBuffer())
       .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
       .then(audioBuffer => {
         setReady(true);
-        
-        // สุ่มจุดเริ่มต้นถ้าไม่ได้ระบุ start
+
+        // Randomly select start point if not specified
         const randomStart = start ?? Math.random() * (audioBuffer.duration - duration);
         const clipEnd = end ?? (randomStart + duration);
         setClipStart(randomStart);
 
-        // สร้าง source node
+        // Create source node
         const sourceNode = audioContext.createBufferSource();
         sourceNode.buffer = audioBuffer;
-        
-        // สร้าง gain node สำหรับควบคุมเสียง
+
+        // Create gain node for volume control
         const gainNode = audioContext.createGain();
         gainNode.gain.value = muted ? 0 : volume;
-        
-        // เชื่อมต่อ nodes
+
+        // Connect nodes
         sourceNode.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        
-        // ตั้งค่าการเล่น
+
+        // Set up playback
         sourceNodeRef.current = sourceNode;
         sourceNode.start(0, randomStart, duration);
         setPlayed(true);
 
-        // ตั้งเวลาสำหรับ onClipEnd
+        // set up onClipEnd
         setTimeout(() => {
           if (onClipEnd) onClipEnd();
         }, duration * 1000);
 
-        // หยุดเล่นเมื่อ component unmount
+        // Stop playback when component unmount
         return () => {
           sourceNode.stop();
           audioContext.close();
