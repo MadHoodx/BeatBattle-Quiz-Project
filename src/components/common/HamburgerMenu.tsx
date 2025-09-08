@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import 'flag-icons/css/flag-icons.min.css';
 import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "@/context/I18nContext";
@@ -33,10 +33,14 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
   const pathname = usePathname();
   const [profile, setProfile] = useState<any>(null);
   const [showLangDropdown, setShowLangDropdown] = useState(false);
+  const langBoxRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!showLangDropdown) return;
     const handle = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement)?.closest('.relative.w-full')) setShowLangDropdown(false);
+      const target = e.target as HTMLElement;
+      if (langBoxRef.current && !langBoxRef.current.contains(target)) {
+        setShowLangDropdown(false);
+      }
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
@@ -50,20 +54,16 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
 
   // change path immediately when language changes
   const handleLangChange = (newLang: string) => {
-    if (newLang === lang) return;
-    // Use useLangHref to get the new path with the newLang
-    const segments = pathname.split('/');
-    if (segments[1] && /^[a-z]{2}(-[a-z]{2,3})?$/i.test(segments[1])) {
-      segments[1] = newLang;
-    } else {
-      segments.splice(1, 0, newLang);
-    }
-    while (segments[2] && /^[a-z]{2}(-[a-z]{2,3})?$/i.test(segments[2])) {
-      segments.splice(2, 1);
-    }
-    const newPath = segments.join('/') || '/';
-    router.push(newPath);
-    setLang(newLang);
+    if (newLang === lang) { setShowLangDropdown(false); return; }
+    const raw = pathname || '/';
+    const segs = raw.split('/').filter(Boolean);
+    if (segs[0] && languages.some(l => l.code === segs[0])) segs.shift();
+    const rest = segs.join('/');
+    const next = '/' + [newLang, rest].filter(Boolean).join('/');
+    setLang(newLang); 
+    setShowLangDropdown(false);
+    setOpen(false);
+    router.push(next);
   };
 
   return (
@@ -71,111 +71,102 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
       {open && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity duration-300"
+            className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity duration-300"
             onClick={() => setOpen(false)}
-          ></div>
+          />
           <nav
-            className="fixed top-0 left-0 h-full w-[340px] bg-gradient-to-b from-[#23244a] via-[#181a2a] to-[#181a2a] z-[60] shadow-2xl transform transition-transform duration-300 border-r border-[#23244a]"
+            className="fixed top-0 left-0 h-full w-[360px] max-w-[85vw] z-[60] shadow-2xl overflow-hidden"
             aria-label="Sidebar menu"
-            style={{ boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)' }}
           >
-            <div className="flex items-center gap-2 px-6 py-2 border-b border-[#23244a] bg-[#23244a]/80">
-              {/* Close (X) button aligned with header hamburger */}
+            <div className="absolute inset-0 bg-[#0d101d]/95 backdrop-blur-xl pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-fuchsia-500/10 via-transparent to-indigo-600/10 pointer-events-none" />
+            <div className="absolute -right-32 top-1/3 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <span className="h-10 w-10 rounded-xl overflow-hidden shadow-lg ring-1 ring-white/10 bg-white/5 flex items-center justify-center">
+                  <img src="/logo.png" alt="BeatBattle Logo" className="h-full w-full object-contain" />
+                </span>
+                <span className="font-semibold text-white/80 text-sm tracking-wide">BeatBattle</span>
+              </div>
               <button
-                className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-[#393a6e] transition"
+                className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-white/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400"
                 aria-label="Close menu"
                 onClick={() => setOpen(false)}
-                style={{ minWidth: 40, minHeight: 40 }}
               >
-                <svg width="28" height="28" fill="none" viewBox="0 0 32 32">
-                  <line x1="8" y1="8" x2="24" y2="24" stroke="#b5baff" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="8" y1="24" x2="24" y2="8" stroke="#b5baff" strokeWidth="3" strokeLinecap="round" />
-                </svg>
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" /></svg>
               </button>
             </div>
-            <ul className="mt-8 space-y-4 px-7">
-              <li>
-                <LangLink href="/category" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#6c63ff]/20 transition shadow-md">
-                  <span className="text-3xl" role="img" aria-label="music-battle">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" fill="#7c6cff"/><path d="M12 20V12H20V20" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14.5" cy="18.5" r="1.5" fill="#fff"/><circle cx="17.5" cy="18.5" r="1.5" fill="#fff"/></svg>
-                  </span>
-                  {t('music_battle')}
-                </LangLink>
-              </li>
-              <li>
-                <LangLink href="/category" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffb84d]/20 transition shadow-md">
-                  <span className="text-3xl" role="img" aria-label="battle-friend">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="6" y="8" width="20" height="16" rx="3" fill="#ffb84d"/><rect x="10" y="4" width="12" height="6" rx="2" fill="#fff"/></svg>
-                  </span>
-                  {t('battle_friend')}
-                </LangLink>
-              </li>
-              <li>
-                <LangLink href="/leaderboard" onClick={() => setOpen(false)} className="flex items-center gap-4 py-3 px-4 rounded-xl text-white text-xl font-bold bg-[#23244a]/60 hover:bg-[#ffd700]/20 transition shadow-md">
-                  <span className="text-3xl" role="img" aria-label="leaderboard">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="22" textAnchor="middle" fontSize="16" fill="#23244a" fontWeight="bold">🏆</text></svg>
-                  </span>
-                  {t('leaderboard')}
-                </LangLink>
-              </li>
-            </ul>
-            <div className="mt-10 border-t border-[#23244a] pt-6 px-7">
-              {user ? (
-                <>
-                  <div className="flex items-center gap-4 mb-3">
+            <div className="relative h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+              <ul className="mt-6 px-5 space-y-2 text-[13px]">
+                <SidebarItem href="/category" onClick={() => setOpen(false)} icon={<MusicIcon />}>{t('music_battle')}</SidebarItem>
+                <SidebarItem href="/category" onClick={() => setOpen(false)} icon={<FriendIcon />} accent="amber">{t('battle_friend')}</SidebarItem>
+                <SidebarItem href="/leaderboard" onClick={() => setOpen(false)} icon={<TrophyIcon />} accent="yellow">{t('leaderboard')}</SidebarItem>
+              </ul>
+              <div className="mt-8 px-5">
+                {user ? (
+                  <div className="rounded-2xl p-4 bg-white/5/50 backdrop-blur border border-white/10 flex items-center gap-3">
                     <Avatar />
-                    <div>
-                      <div className="font-bold text-lg text-white">{profile?.username || user?.email}</div>
-                      <div className="text-xs text-gray-400">{user?.email}</div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{profile?.username || user?.email}</p>
+                      <p className="text-xs text-white/40 truncate">{user?.email}</p>
                     </div>
                   </div>
-                  <LangLink href="/profile" onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold mb-2">{t('profile')}</LangLink>
-                  <button
-                    className="w-full text-left py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#ff4d6d]/20 text-[#ff4d6d] font-bold transition"
-                    onClick={() => { signOut(); setOpen(false); }}
-                  >{t('logout')}</button>
-                </>
-              ) : (
-                <LangLink href="/auth" onClick={() => setOpen(false)} className="block py-2 px-3 rounded-lg bg-[#23244a]/60 hover:bg-[#6c63ff]/20 text-white font-semibold">{t('login')}</LangLink>
-              )}
-            </div>
-            <div className="mt-4 px-7 pb-7">
-              <div className="mb-2 font-semibold text-white">{t('language')}</div>
-              <div className="relative w-full">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between px-4 py-2 rounded-2xl border-2 text-base font-bold bg-[#23244a]/80 text-white border-[#23244a] focus:outline-none focus:ring-2 focus:ring-[#7c6cff] transition-colors hover:bg-[#23244a] cursor-pointer shadow-md"
-                  onClick={() => setShowLangDropdown(v => !v)}
-                  aria-haspopup="listbox"
-                  aria-expanded={showLangDropdown ? 'true' : 'false'}
-                >
-                  <span className="flex items-center gap-2">
-                    {(() => {
-                      const l = languages.find(l => l.code === lang);
-                      return l ? <span className={`fi fi-${l.country.toLowerCase()} mr-2 rounded`} style={{ fontSize: '1.5em' }} /> : null;
-                    })()} {languages.find(l => l.code === lang)?.label}
-                  </span>
-                  <svg className="ml-2 h-5 w-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                {showLangDropdown && (
-                  <ul className="absolute z-20 mt-2 w-full bg-[#23244a] border border-[#23244a] rounded-2xl shadow-lg max-h-72 overflow-auto animate-fadeIn" role="listbox">
-                    {languages.map(l => (
-                      <li
-                        key={l.code}
-                        className={`flex items-center gap-2 px-4 py-2 cursor-pointer text-base font-bold transition-colors ${lang === l.code ? 'bg-[#7c6cff]/30 text-[#ffd700]' : 'hover:bg-[#7c6cff]/10 text-white'}`}
-                        role="option"
-                        aria-selected={lang === l.code}
-                        onClick={() => { handleLangChange(l.code); setShowLangDropdown(false); }}
-                      >
-                        <span className={`fi fi-${l.country.toLowerCase()} mr-2 rounded`} style={{ fontSize: '1.5em' }} /> {l.label}
-                      </li>
-                    ))}
-                  </ul>
+                ) : (
+                  <LangLink href="/auth" onClick={() => setOpen(false)} className="block text-center w-full rounded-xl border border-fuchsia-400/40 bg-gradient-to-r from-fuchsia-600/30 to-pink-500/30 text-fuchsia-100 hover:from-fuchsia-600/40 hover:to-pink-500/40 hover:text-white px-4 py-2 text-sm font-semibold transition">{t('login')}</LangLink>
+                )}
+                {user && (
+                  <div className="flex gap-3 mt-3">
+                    <LangLink href="/profile" onClick={() => setOpen(false)} className="flex-1 text-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-[11px] font-medium text-white/75 hover:text-white transition">{t('profile')}</LangLink>
+                    <button onClick={() => { signOut(); setOpen(false); }} className="flex-1 text-center rounded-xl border border-rose-400/30 bg-rose-600/15 hover:bg-rose-600/25 px-4 py-2 text-[11px] font-medium text-rose-200/90 hover:text-rose-100 transition">{t('logout')}</button>
+                  </div>
                 )}
               </div>
-            </div>
-            <div className="px-7 pb-5 text-xs text-[#b5baff] mt-4">
-              <LangLink href="/about" onClick={() => setOpen(false)} className="hover:underline">{t('about')}</LangLink> · <LangLink href="/howto" onClick={() => setOpen(false)} className="hover:underline">{t('howto')}</LangLink> · <LangLink href="/contact" onClick={() => setOpen(false)} className="hover:underline">{t('contact')}</LangLink>
+              <div className="mt-10 px-5">
+                <p className="text-[11px] font-semibold tracking-wider text-white/45 mb-2 uppercase">{t('language')}</p>
+                <div ref={langBoxRef} className="relative">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-4 h-11 rounded-xl border border-white/10 text-[13px] font-medium bg-white/5 text-white/75 hover:text-white hover:bg-white/[0.08] transition"
+                    onClick={() => setShowLangDropdown(v => !v)}
+                    aria-haspopup="listbox"
+                    aria-expanded={showLangDropdown ? 'true' : 'false'}
+                  >
+                    <span className="flex items-center gap-2">
+                      {(() => {
+                        const l = languages.find(l => l.code === lang);
+                        return l ? <span className={`fi fi-${l.country.toLowerCase()} mr-1.5 rounded`} style={{ fontSize: '1.25em' }} /> : null;
+                      })()} {languages.find(l => l.code === lang)?.label}
+                    </span>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+                  {showLangDropdown && (
+                    <ul className="absolute z-20 mt-2 w-full bg-[#121829]/95 border border-white/10 rounded-xl shadow-xl max-h-72 overflow-auto animate-fadeIn backdrop-blur-xl" role="listbox">
+                      {languages.map(l => (
+                        <li
+                          key={l.code}
+                          className={`flex items-center gap-2 px-4 py-2.5 cursor-pointer text-[13px] font-medium transition-colors select-none ${lang === l.code ? 'bg-fuchsia-500/25 text-fuchsia-100' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
+                          role="option"
+                          aria-selected={lang === l.code}
+                          onClick={(e) => { e.stopPropagation(); handleLangChange(l.code); setShowLangDropdown(false); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { handleLangChange(l.code); setShowLangDropdown(false); } }}
+                          tabIndex={0}
+                        >
+                          <span className={`fi fi-${l.country.toLowerCase()} mr-2 rounded`} style={{ fontSize: '1.25em' }} /> {l.label}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              <div className="mt-12 px-5 pb-8">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/35 font-semibold mb-3">Info</p>
+                <div className="flex flex-wrap gap-3 text-[11px] text-white/40">
+                  <LangLink href="/about" onClick={() => setOpen(false)} className="hover:text-white/70 transition">{t('about')}</LangLink>
+                  <LangLink href="/howto" onClick={() => setOpen(false)} className="hover:text-white/70 transition">{t('howto')}</LangLink>
+                  <LangLink href="/contact" onClick={() => setOpen(false)} className="hover:text-white/70 transition">{t('contact')}</LangLink>
+                </div>
+                <div className="mt-6 text-[10px] text-white/25">© 2025 BeatBattle</div>
+              </div>
             </div>
           </nav>
         </>
@@ -183,3 +174,30 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
     </>
   );
 }
+
+function SidebarItem({ href, onClick, icon, children, accent }: any) {
+  const base = accent === 'amber' ? 'hover:border-amber-400/40 hover:bg-amber-500/10' : accent === 'yellow' ? 'hover:border-yellow-300/40 hover:bg-yellow-400/10' : 'hover:border-fuchsia-400/40 hover:bg-fuchsia-500/10';
+  return (
+    <li>
+      <LangLink
+        href={href}
+        onClick={onClick}
+        className={`group flex items-center gap-4 py-3.5 px-4 rounded-xl text-sm font-medium border border-white/10 bg-white/5 text-white/80 hover:text-white transition ${base}`}
+      >
+        <span className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-xl text-white/60 group-hover:text-white group-hover:scale-105 transition">{icon}</span>
+        <span className="tracking-wide">{children}</span>
+        <span className="ml-auto opacity-0 group-hover:opacity-100 text-[10px] text-white/40 transition">›</span>
+      </LangLink>
+    </li>
+  );
+}
+
+const MusicIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+);
+const FriendIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5z"/><path d="M2 22c0-4.4 4-8 10-8s10 3.6 10 8"/></svg>
+);
+const TrophyIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8"/><path d="M12 17c3 0 5-2 5-5V4H7v8c0 3 2 5 5 5z"/><path d="M5 4H2v2c0 2 2 4 4 4"/><path d="M19 4h3v2c0 2-2 4-4 4"/></svg>
+);

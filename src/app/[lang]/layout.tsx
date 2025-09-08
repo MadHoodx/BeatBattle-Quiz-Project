@@ -8,10 +8,11 @@ export const metadata: Metadata = {
   description: "K-Drama OST Quiz Game",
 };
 
-export default async function LangLayout({ children, params }: { children: React.ReactNode; params: { lang: string } }) {
+// Next.js 15+ dynamic routes: params must be awaited (async component)
+export default async function LangLayout({ children, params }: { children: React.ReactNode; params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   return (
-    <I18nProvider lang={lang}>
+    <I18nProvider key={lang} lang={lang}>
       <ClientLayout>{children}</ClientLayout>
     </I18nProvider>
   );

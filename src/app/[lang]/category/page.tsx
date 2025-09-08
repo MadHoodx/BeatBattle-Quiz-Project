@@ -1,90 +1,114 @@
 
 "use client";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useI18n } from "@/context/I18nContext";
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
+import { useLangHref } from "@/components/common/LangLink";
 
-const categories = [
-  {
-    key: "all",
-    label: "All OSTs",
-    emoji: "🎵",
-    gradient: "from-[#7c6cff] via-[#393a6e] to-[#23244a]",
-    ring: "ring-4 ring-[#7c6cff]/40",
-    desc: "All K-Drama OSTs in one challenge!",
-  },
-  {
-    key: "romance",
-    label: "Romance",
-    emoji: "💖",
-    gradient: "from-[#ffb84d] via-[#ff6f91] to-[#23244a]",
-    ring: "ring-4 ring-[#ffb84d]/40",
-    desc: "Heart-fluttering love songs from top dramas.",
-  },
-  {
-    key: "action",
-    label: "Action",
-    emoji: "⚡",
-    gradient: "from-[#6c63ff] via-[#23244a] to-[#ffb84d]",
-    ring: "ring-4 ring-[#6c63ff]/40",
-    desc: "Epic and intense OSTs for thrill seekers!",
-  },
-  {
-    key: "classic",
-    label: "Classic",
-    emoji: "🌟",
-    gradient: "from-[#393a6e] via-[#7c6cff] to-[#ffb84d]",
-    ring: "ring-4 ring-[#393a6e]/40",
-    desc: "Legendary OSTs everyone should know.",
-  },
+interface Category {
+  key: string;
+  label: string;
+  emoji: string;
+  gradient: string;
+  ring: string;
+  desc: string;
+}
+
+const categories: Category[] = [
+  { key: "all",     label: "All OSTs",  emoji: "🎵", gradient: "from-violet-500/35 via-fuchsia-500/10 to-indigo-700/20", ring:"ring-violet-400/35", desc: "All K-Drama OSTs in one challenge!" },
+  { key: "romance", label: "Romance",  emoji: "💖", gradient: "from-rose-400/40 via-pink-500/15 to-violet-700/20",   ring:"ring-rose-300/40",    desc: "Heart-fluttering love songs from top dramas." },
+  { key: "action",  label: "Action",   emoji: "⚡", gradient: "from-amber-300/40 via-indigo-600/20 to-fuchsia-600/20", ring:"ring-amber-300/40", desc: "Epic and intense OSTs for thrill seekers!" },
+  { key: "classic", label: "Classic",  emoji: "🌟", gradient: "from-indigo-400/40 via-violet-600/20 to-amber-500/25", ring:"ring-indigo-300/40",  desc: "Legendary OSTs everyone should know." },
 ];
+
+function Atmosphere() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#31265a_0%,transparent_60%),radial-gradient(circle_at_80%_30%,#3a1d52_0%,transparent_55%),linear-gradient(160deg,#0b0f1f,#090d18)]" />
+      <div className="absolute inset-0 opacity-[0.15] mix-blend-screen" style={{backgroundImage:'url(/noise.png),linear-gradient(90deg,transparent,#ffffff08 50%,transparent)',backgroundSize:'300px 300px, 400% 100%', animation:'shift 18s linear infinite'}} />
+    </div>
+  );
+}
+
+function CategoryCard({ cat, onClick, delay }: { cat: Category; onClick:()=>void; delay:number }) {
+  return (
+    <button
+      onClick={onClick}
+  className={`group relative overflow-hidden rounded-3xl px-7 pt-10 pb-7 flex flex-col items-center border border-white/12 bg-gradient-to-br ${cat.gradient} backdrop-blur-xl shadow-[0_10px_40px_-5px_rgba(0,0,0,0.55)] hover:shadow-[0_15px_55px_-5px_rgba(120,60,255,0.55)] transition transform hover:-translate-y-1 active:scale-[0.985] min-h-[300px] animate-[fadeInUp_.7s_cubic-bezier(.4,.8,.3,1)]`}
+      style={{animationDelay:`${delay}ms`}}
+    >
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.18),transparent_70%)]" />
+  {/* Elevated icon capsule (ensure no clipping) */}
+  <div className={`absolute -top-4 left-1/2 -translate-x-1/2 h-20 w-20 rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center border border-white/15 shadow-lg group-hover:scale-110 transition text-3xl ring-2 ${cat.ring}`}>
+        <span className="relative z-10">{cat.emoji}</span>
+        <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition" />
+      </div>
+  <div className="pt-12 flex-1 flex flex-col items-center text-center w-full">
+        <h2 className="text-[1.35rem] md:text-2xl font-bold mb-3 bg-gradient-to-r from-white via-white/85 to-white/60 bg-clip-text text-transparent drop-shadow-sm tracking-tight">
+          {cat.label}
+        </h2>
+        <p className="text-xs md:text-sm text-white/65 leading-relaxed max-w-xs mx-auto">
+          {cat.desc}
+        </p>
+      </div>
+      <div className="mt-4 flex flex-col items-center gap-3 w-full">
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-white/40">
+          <span className="px-2 py-1 rounded-full bg-white/5 border border-white/10 font-semibold group-hover:text-white/75 transition">OST</span>
+          <span className="px-2 py-1 rounded-full bg-white/5 border border-white/10 font-semibold group-hover:text-white/75 transition">Quiz</span>
+        </div>
+        <span className="relative inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-[11px] font-bold tracking-wider uppercase text-[#18152e] shadow-lg shadow-fuchsia-500/30 group-hover:shadow-pink-500/40 group-hover:scale-105 transition overflow-hidden">
+          <span className="relative z-10">Start</span>
+          <svg className="w-3.5 h-3.5 relative z-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 5l7 7-7 7"/></svg>
+          <span className="absolute inset-0 bg-[linear-gradient(95deg,rgba(255,255,255,0),rgba(255,255,255,0.6)_50%,rgba(255,255,255,0))] opacity-0 group-hover:opacity-60 animate-[cardSheen_2.4s_linear_infinite]" />
+        </span>
+      </div>
+    </button>
+  );
+}
 
 export default function CategoryPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const params = useParams();
-  const lang = params?.lang || "en";
+  const searchParams = useSearchParams();
+  const difficulty = (searchParams?.get('difficulty') === 'hardcore') ? 'hardcore' : 'casual';
+  const { lang = "en" } = useParams<{ lang: string }>();
 
   // Memoize for performance
   const catList = useMemo(() => categories, []);
 
+  const goQuiz = useCallback((key: string) => {
+    // preserve current lang automatically via useLangHref helper
+    const href = useLangHref(`/quiz?category=${key}`);
+    if (href) router.push(href as string);
+  }, [router]);
+
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#181a2a] via-[#23244a] to-[#181a2a] px-4 py-10">
-      <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#7c6cff] to-[#ffb84d] drop-shadow mb-2 animate-fadein">
-        {t("selectcategory")}
-      </h1>
-      <p className="text-lg text-[#b5baff] mb-8 animate-fadein-slow">
-        {t("choose_category_desc") || "Pick your vibe!"}
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-5xl mt-6 auto-rows-fr">
-        {catList.map((cat) => (
-          <button
-            key={cat.key}
-            className={`relative flex flex-col items-center rounded-2xl p-6 transition-all duration-300 cursor-pointer bg-gradient-to-br ${cat.gradient} ${cat.ring} hover:scale-[1.035] hover:shadow-[0_4px_24px_0_rgba(124,108,255,0.18)] shadow-xl focus:outline-none focus:ring-2 focus:ring-[#ffb84d] group min-h-[200px] min-w-[180px]`}
-            onClick={() => router.push(useLangHref(`/quiz?category=${cat.key}`) as string)}
-            aria-label={cat.label}
-            style={{}}
-          >
-            {/* Floating emoji badge */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-10">
-              <span className="inline-flex items-center justify-center text-3xl md:text-4xl drop-shadow bg-white/10 rounded-full w-12 h-12 border-2 border-white/20 group-hover:scale-110 transition-transform duration-300">
-                {cat.emoji}
-              </span>
-            </div>
-            <div className="flex-1 flex flex-col justify-end items-center pt-10 w-full">
-              <h2 className="text-xl md:text-2xl font-extrabold mb-2 text-white drop-shadow text-center tracking-tight">
-                {cat.label}
-              </h2>
-              <p className="text-sm md:text-base text-center text-white/90 mb-4 max-w-xs mx-auto leading-relaxed">
-                {cat.desc}
-              </p>
-            </div>
-            <span className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#7c6cff] to-[#ffb84d] text-white font-bold px-5 py-1.5 rounded-full text-xs shadow-md animate-fadein-slow border group-hover:scale-105 transition-transform duration-300">
-              {cat.label}
-            </span>
-          </button>
-        ))}
+  <main className="relative min-h-screen w-full overflow-hidden px-5 py-24 md:py-28 bg-[#070a18] text-white">
+      <Atmosphere />
+      <div className="relative mx-auto max-w-7xl">
+        <div className="text-center mb-14">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-semibold tracking-wider uppercase bg-white/5 border border-white/10 text-white/60 backdrop-blur animate-[fadeIn_.9s_ease]">{difficulty==='hardcore' ? 'Hardcore' : 'Casual'} Mode</span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black tracking-tight bg-gradient-to-r from-white via-fuchsia-200 to-amber-200 bg-clip-text text-transparent drop-shadow animate-[fadeIn_.8s_ease]">
+            {t("selectcategory")}
+          </h1>
+          <p className="mt-4 text-base md:text-lg text-white/60 max-w-2xl mx-auto leading-relaxed animate-[fadeIn_1s_ease]">
+            {t("choose_category_desc") || "Pick your vibe!"}
+          </p>
+        </div>
+        <div className="grid gap-8 md:gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {catList.map((cat,i) => (
+            <CategoryCard key={cat.key} cat={cat} delay={i*80} onClick={() => goQuiz(cat.key)} />
+          ))}
+        </div>
       </div>
+      <style jsx global>{`
+        @keyframes fadeIn {from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:none;}}
+        @keyframes fadeInUp {from{opacity:0;transform:translateY(26px);}to{opacity:1;transform:translateY(0);}}
+        @keyframes gridShift {0%{background-position:0 0;}100%{background-position:320px 320px;}}
+        @keyframes cardSheen {0%{transform:translateX(-120%);}100%{transform:translateX(120%);}}
+      `}</style>
     </main>
   );
 }
