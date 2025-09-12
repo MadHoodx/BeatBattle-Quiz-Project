@@ -15,10 +15,10 @@ interface Category {
 }
 
 const categories: Category[] = [
-  { key: "kpop",    label: "K-Pop",     emoji: "�🇷", gradient: "from-violet-500/35 via-fuchsia-500/10 to-indigo-700/20", ring:"ring-violet-400/35", desc: "Korean pop hits from BTS, BLACKPINK & more!" },
-  { key: "jpop",    label: "J-Pop",     emoji: "🇯🇵", gradient: "from-rose-400/40 via-pink-500/15 to-violet-700/20",   ring:"ring-rose-300/40",    desc: "Japanese pop from YOASOBI, Official髭男dism!" },
-  { key: "thai",    label: "Thai Pop",  emoji: "🇹🇭", gradient: "from-amber-300/40 via-indigo-600/20 to-fuchsia-600/20", ring:"ring-amber-300/40", desc: "Thai pop hits and classics!" },
-  { key: "western", label: "Pop Hits",  emoji: "�", gradient: "from-indigo-400/40 via-violet-600/20 to-amber-500/25", ring:"ring-indigo-300/40",  desc: "Top Western pop from Taylor Swift, Dua Lipa!" },
+  { key: "kpop",    label: "K-Pop",     emoji: "KR", gradient: "from-violet-500/35 via-fuchsia-500/10 to-indigo-700/20", ring:"ring-violet-400/35", desc: "Korean pop hits from BTS, BLACKPINK & more!" },
+  { key: "jpop",    label: "J-Pop",     emoji: "JP", gradient: "from-rose-400/40 via-pink-500/15 to-violet-700/20",   ring:"ring-rose-300/40",    desc: "Japanese pop from YOASOBI, Official髭男dism!" },
+  { key: "thai",    label: "Thai Pop",  emoji: "TH", gradient: "from-amber-300/40 via-indigo-600/20 to-fuchsia-600/20", ring:"ring-amber-300/40", desc: "Thai pop hits and classics!" },
+  { key: "western", label: "Pop Hits",  emoji: "US", gradient: "from-indigo-400/40 via-violet-600/20 to-amber-500/25", ring:"ring-indigo-300/40",  desc: "Top Western pop from Taylor Swift, Dua Lipa!" },
   { key: "indie",   label: "Indie Rock", emoji: "🎸", gradient: "from-emerald-400/40 via-teal-500/15 to-cyan-600/20", ring:"ring-emerald-300/40", desc: "Independent & alternative music vibes!" },
   { key: "rock",    label: "Rock/Metal", emoji: "🤘", gradient: "from-red-400/40 via-orange-500/15 to-yellow-600/20", ring:"ring-red-300/40", desc: "Heavy rock and metal classics!" },
 ];
@@ -69,19 +69,21 @@ function CategoryCard({ cat, onClick, delay }: { cat: Category; onClick:()=>void
 }
 
 export default function CategoryPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const difficulty = (searchParams?.get('difficulty') === 'hardcore') ? 'hardcore' : 'casual';
-  const { lang = "en" } = useParams<{ lang: string }>();
+  const params = useParams<{ lang: string }>();
+  const currentLang = params?.lang || lang || "en";
 
   // Memoize for performance
   const catList = useMemo(() => categories, []);
 
   const goQuiz = useCallback((key: string) => {
-    // Navigate to quiz with category and difficulty
-    router.push(`/${lang}/quiz?category=${key}&difficulty=${difficulty}`);
-  }, [router, difficulty, lang]);
+    // preserve current lang and difficulty - build URL manually instead of using hook
+    const href = `/${currentLang}/quiz?category=${key}&difficulty=${difficulty}`;
+    router.push(href);
+  }, [router, difficulty, currentLang]);
 
   return (
   <main className="relative min-h-screen w-full overflow-hidden px-5 py-24 md:py-28 bg-[#070a18] text-white">

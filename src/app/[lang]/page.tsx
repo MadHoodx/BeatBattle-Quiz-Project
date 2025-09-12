@@ -7,6 +7,7 @@ import { getProfile } from "@/server/services/database/db";
 import { useI18n } from "@/context/I18nContext";
 import { Hero } from "@/components/home/Hero";
 import { LeaderboardPanel } from "@/components/home/LeaderboardPanel";
+import { FooterDisclaimer } from "@/components/common/LegalDisclaimer";
 
 const mockLeaderboard = [
   { username: "Jisoo", score: 10 },
@@ -48,9 +49,10 @@ export default function Home() {
           </div>
         </div>
       </Hero>
-      <footer className="relative z-10 py-10 text-center text-xs md:text-sm text-white/40">
-        © 2025 <span className="font-semibold text-white/60">BeatBattle</span> · <a className="underline hover:text-fuchsia-300" href="mailto:contact@beatbattle.com">Contact</a>
-      </footer>
+      
+      {/* Legal Disclaimer Section */}
+      <FooterDisclaimer />
+      
       <style jsx global>{`
         @keyframes shift {0%{background-position:0 0,0 0;}100%{background-position:0 0,400% 0;}}
       `}</style>
@@ -58,5 +60,4 @@ export default function Home() {
   );
 }
 
-// (Removed SocialPlayPanel per request – focusing on enhanced leaderboard only)
 
