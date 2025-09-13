@@ -6,7 +6,7 @@ import { useI18n } from "@/context/I18nContext";
 import LangLink, { useLangHref } from "./LangLink";
 import { useAuth } from "@/context/AuthContext";
 import Avatar from "./Avatar";
-import { getProfile } from "@/server/services/database/db";
+import { getProfile } from "@/lib/profile";
 
 
 const languages = [

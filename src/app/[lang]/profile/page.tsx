@@ -2,7 +2,7 @@
 "use client";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
-import { getProfile } from "@/server/services/database/db";
+import { getProfile } from "@/lib/profile";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useLangHref } from "@/components/common/LangLink";
@@ -27,7 +27,7 @@ export default function ProfilePage() {
       <div className="w-full max-w-md bg-white/5 rounded-2xl p-8 shadow-xl border border-white/10">
         <div className="flex flex-col items-center mb-6">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl font-bold mb-2">
-            {profile?.username?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+            {profile?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
           </div>
           <div className="text-xl font-bold">{profile?.username || "-"}</div>
           <div className="text-white/70 text-sm">{user.email}</div>

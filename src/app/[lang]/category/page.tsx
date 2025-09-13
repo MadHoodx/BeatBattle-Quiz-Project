@@ -19,7 +19,7 @@ const categories: Category[] = [
   { key: "jpop",    label: "J-Pop",     emoji: "JP", gradient: "from-rose-400/40 via-pink-500/15 to-violet-700/20",   ring:"ring-rose-300/40",    desc: "Japanese pop from YOASOBI, Official髭男dism!" },
   { key: "thai",    label: "Thai Pop",  emoji: "TH", gradient: "from-amber-300/40 via-indigo-600/20 to-fuchsia-600/20", ring:"ring-amber-300/40", desc: "Thai pop hits and classics!" },
   { key: "western", label: "Pop Hits",  emoji: "US", gradient: "from-indigo-400/40 via-violet-600/20 to-amber-500/25", ring:"ring-indigo-300/40",  desc: "Top Western pop from Taylor Swift, Dua Lipa!" },
-  { key: "indie",   label: "Indie Rock", emoji: "🎸", gradient: "from-emerald-400/40 via-teal-500/15 to-cyan-600/20", ring:"ring-emerald-300/40", desc: "Independent & alternative music vibes!" },
+  { key: "KDrama",   label: "K-Drama Ost", emoji: "🇰🇷", gradient: "from-emerald-400/40 via-teal-500/15 to-cyan-600/20", ring:"ring-emerald-300/40", desc: "Independent & alternative music vibes!" },
   { key: "rock",    label: "Rock/Metal", emoji: "🤘", gradient: "from-red-400/40 via-orange-500/15 to-yellow-600/20", ring:"ring-red-300/40", desc: "Heavy rock and metal classics!" },
 ];
 
@@ -40,7 +40,7 @@ function CategoryCard({ cat, onClick, delay }: { cat: Category; onClick:()=>void
       style={{animationDelay:`${delay}ms`}}
     >
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.18),transparent_70%)]" />
-  {/* Elevated icon capsule (ensure no clipping) */}
+  {/* Elevated icon capsule  */}
   <div className={`absolute -top-4 left-1/2 -translate-x-1/2 h-20 w-20 rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center border border-white/15 shadow-lg group-hover:scale-110 transition text-3xl ring-2 ${cat.ring}`}>
         <span className="relative z-10">{cat.emoji}</span>
         <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition" />

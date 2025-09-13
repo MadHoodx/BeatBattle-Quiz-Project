@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useLangHref } from "@/components/common/LangLink";
 import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useState } from "react";
-import { getProfile } from "@/server/services/database/db";
+import { getProfile } from "@/lib/profile";
 import { useI18n } from "@/context/I18nContext";
 import { Hero } from "@/components/home/Hero";
 import { LeaderboardPanel } from "@/components/home/LeaderboardPanel";

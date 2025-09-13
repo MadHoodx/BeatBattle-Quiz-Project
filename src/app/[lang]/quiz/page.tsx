@@ -1041,7 +1041,7 @@ export default function QuizPage() {
             <div className="space-y-4">
               {currentQuestion.choices.map((choice, index) => (
                 <ChoiceButton
-                  key={choice}
+                  key={`choice-${index}`}
                   choice={choice}
                   selected={
                     quiz.selected === null
@@ -1065,7 +1065,7 @@ export default function QuizPage() {
                   ) : (
                     <p className="text-rose-300 font-semibold flex items-center gap-2"><span>❌</span> Wrong!</p>
                   )}
-                  <p className="text-white/60 text-sm mt-2">Answer: <span className="text-white font-semibold">{currentQuestion.choices[currentQuestion.correctAnswer]} - {currentQuestion.artist}</span></p>
+                  <p className="text-white/60 text-sm mt-2">Answer: <span className="text-white font-semibold">{currentQuestion.choices[currentQuestion.correctAnswer]}</span></p>
                 </div>
               )}
             </div>

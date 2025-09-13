@@ -1,19 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+// Use the new multi-category system
+import { getSongsByCategory, generateQuizQuestions, QuizQuestion } from '@/data'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseKey)
-
-interface QuizQuestion {
-  videoId: string;
-  title: string;
-  artist: string;
-  choices: string[];
-  correctAnswer: number;
-  startTime: number;
-  endTime: number;
-}
 
 export async function GET(request: Request) {
   try {
@@ -39,48 +31,21 @@ export async function GET(request: Request) {
 
 async function fallbackToManualData(category: string, difficulty: string, numQuestions: number) {
   try {
-    const mockVideos = await import('@/data/mockVideos.json');
-    const allVideos = mockVideos.default;
+    console.log(`🎵 Getting songs from multi-category system for: ${category}`);
     
-    if (allVideos && allVideos.length > 0) {
-      const timestamp = Date.now();
-      const seed = timestamp % 1000000; 
+    const result = await getSongsByCategory(category);
+    
+    if (result && result.songs && result.songs.length > 0) {
+      console.log(`📚 Found ${result.songs.length} songs for category: ${category}`);
       
-  
-      let shuffled = [...allVideos];
-      for (let i = 0; i < 3; i++) {
-        shuffled = shuffled.sort(() => Math.random() - 0.5);
-      }
+      const questions = await generateQuizQuestions(category, numQuestions);
       
-      const selected = shuffled.slice(0, numQuestions);
-      
-      const questions: QuizQuestion[] = selected.map(video => {
-        const wrongChoices = shuffled
-          .filter(v => v.videoId !== video.videoId)
-          .slice(0, 3)
-          .map(v => v.title);
-        
-        const choices = [video.title, ...wrongChoices].sort(() => Math.random() - 0.5);
-        const correctAnswer = choices.indexOf(video.title);
-        
-        return {
-          videoId: video.videoId,
-          title: video.title,
-          artist: video.artist,
-          choices,
-          correctAnswer,
-          startTime: 30 + Math.floor(Math.random() * 60), 
-          endTime: 60
-        };
-      });
-      
-      console.log(`🔄 Fallback to mock videos: ${questions.length} questions from ${allVideos.length} total songs`);
+      console.log(`🎵 Generated ${questions.length} questions`);
       console.log(`🎵 Selected songs: ${questions.map(q => q.title).join(', ')}`);
-      console.log(`🎲 Seed: ${seed}, Timestamp: ${timestamp}`);
       
       return NextResponse.json({ 
         success: true, 
-        source: 'mock-videos-fallback', 
+        source: 'centralized-data', 
         category, 
         difficulty, 
         questions, 
@@ -88,14 +53,14 @@ async function fallbackToManualData(category: string, difficulty: string, numQue
       });
     }
   } catch (fallbackError) {
-    console.error('💥 Fallback failed:', fallbackError);
+    console.error('💥 Centralized data failed:', fallbackError);
   }
 
   // If all else fails, return an error
   return NextResponse.json({
     success: false,
     error: 'No quiz data available',
-    message: 'Both Supabase and manual data are unavailable'
+    message: 'Centralized data is unavailable'
   }, { status: 503 });
 }
 
@@ -114,7 +79,6 @@ export async function POST(request: Request) {
       totalTime
     } = body;
 
-    // Optional: Store analytics in Supabase
     const { error } = await supabase
       .from('quiz_sessions')
       .insert({
