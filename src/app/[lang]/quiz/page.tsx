@@ -17,7 +17,8 @@ interface QuizQuestion {
 interface QuizState {
   questions: QuizQuestion[];
   currentIndex: number;
-  score: number;
+  score: number; // Keep for backward compatibility
+  totalPoints: number; // New: total points from time-based scoring
   selected: number | null;
   isPlaying: boolean;
   isRevealing: boolean;
@@ -29,6 +30,7 @@ interface QuizState {
   timeoutAnswers: number;
   totalTime: number;
   questionTimes: number[]; // Time taken for each question
+  questionPoints: number[]; // Points earned for each question
 }
 
 function Atmosphere() {
@@ -60,6 +62,7 @@ export default function QuizPage() {
     questions: [],
     currentIndex: 0,
     score: 0,
+    totalPoints: 0, // New: total points from time-based scoring
     selected: null,
     isPlaying: false,
     isRevealing: false,
@@ -70,7 +73,8 @@ export default function QuizPage() {
     wrongAnswers: 0,
     timeoutAnswers: 0,
     totalTime: 0,
-    questionTimes: []
+    questionTimes: [],
+    questionPoints: [] // New: points for each question
   });
 
   const [loading, setLoading] = useState(true);
@@ -82,6 +86,26 @@ export default function QuizPage() {
   const [bonusTime, setBonusTime] = useState(0); 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now()); // Track question start time
   const [iframeKey, setIframeKey] = useState(0); // Force iframe refresh
+  const [showPointsAnimation, setShowPointsAnimation] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState(0);
+
+  // Calculate points based on time remaining (100 points max per question)
+  const calculateTimePoints = (timeRemaining: number): number => {
+    // 15 seconds = 100 points, linear decrease
+    // Formula: (timeRemaining / 15) * 100
+    const points = Math.round((timeRemaining / 15) * 100);
+    return Math.max(0, Math.min(100, points)); // Ensure between 0-100
+  };
+
+  // Get performance rating based on average points per question
+  const getPerformanceRating = (avgPoints: number) => {
+    if (avgPoints >= 95) return { emoji: "👑", title: "LEGENDARY!", rank: "S+", color: "from-yellow-200 via-amber-300 to-orange-400" };
+    if (avgPoints >= 85) return { emoji: "🏆", title: "Excellent!", rank: "A", color: "from-emerald-300 via-green-400 to-teal-400" };
+    if (avgPoints >= 75) return { emoji: "🥇", title: "Great Job!", rank: "B", color: "from-blue-300 via-cyan-400 to-indigo-400" };
+    if (avgPoints >= 65) return { emoji: "🥈", title: "Good Work!", rank: "C", color: "from-purple-300 via-violet-400 to-fuchsia-400" };
+    if (avgPoints >= 50) return { emoji: "🥉", title: "Not Bad!", rank: "D", color: "from-orange-300 via-amber-400 to-yellow-400" };
+    return { emoji: "📚", title: "Keep Trying!", rank: "F", color: "from-slate-300 via-gray-400 to-zinc-400" };
+  };
 
   // Precompute visualizer heights (must be before any conditional returns to keep hook order stable)
   const visualizerHeights = useMemo(() => Array.from({ length: 24 }, () => 12 + Math.random() * 48), [quiz.currentIndex]);
@@ -290,13 +314,18 @@ export default function QuizPage() {
     // Calculate time taken (full 15 seconds)
     const timeTaken = 15;
     
+    // No points for timeout (0 points)
+    const timePoints = 0;
+    
     setQuiz(prev => ({ 
       ...prev, 
       selected: -1, // Wrong answer indicator
       isRevealing: true,
       timeoutAnswers: prev.timeoutAnswers + 1,
       questionTimes: [...prev.questionTimes, timeTaken],
-      totalTime: prev.totalTime + timeTaken
+      questionPoints: [...prev.questionPoints, timePoints],
+      totalTime: prev.totalTime + timeTaken,
+      totalPoints: prev.totalPoints + timePoints
       // Keep isPlaying: true to continue music for 6 more seconds
     }));
     
@@ -314,28 +343,35 @@ export default function QuizPage() {
     // Calculate time taken for this question
     const timeTaken = (Date.now() - questionStartTime) / 1000;
     
+    const isCorrect = choiceIndex === currentQuestion.correctAnswer;
+    
+    // Calculate points based on time remaining (only for correct answers)
+    const timePoints = isCorrect ? calculateTimePoints(quiz.timeLeft) : 0;
+    
+    // Show points animation for correct answers
+    if (isCorrect && timePoints > 0) {
+      setEarnedPoints(timePoints);
+      setShowPointsAnimation(true);
+      // Hide animation after 2 seconds
+      setTimeout(() => setShowPointsAnimation(false), 2000);
+    }
+    
     setQuiz(prev => ({ 
       ...prev, 
       selected: choiceIndex,
       isRevealing: true,
       questionTimes: [...prev.questionTimes, timeTaken],
-      totalTime: prev.totalTime + timeTaken
+      questionPoints: [...prev.questionPoints, timePoints],
+      totalTime: prev.totalTime + timeTaken,
+      totalPoints: prev.totalPoints + timePoints,
       // Keep isPlaying: true to continue music for 6 more seconds
-    }));
-
-    const isCorrect = choiceIndex === currentQuestion.correctAnswer;
-    if (isCorrect) {
-      setQuiz(prev => ({ 
-        ...prev, 
+      ...(isCorrect ? {
         score: prev.score + 1,
         correctAnswers: prev.correctAnswers + 1
-      }));
-    } else {
-      setQuiz(prev => ({ 
-        ...prev, 
+      } : {
         wrongAnswers: prev.wrongAnswers + 1
-      }));
-    }
+      })
+    }));
 
     // Always give 6 seconds of additional listening time regardless of answer
     setBonusTime(6);
@@ -380,6 +416,7 @@ export default function QuizPage() {
       setSmoothTimeLeft(15); // Reset smooth timer for next question
       setBonusTime(0); // Reset bonus time
       setQuestionStartTime(Date.now()); // Reset question timer
+      setShowPointsAnimation(false); // Reset points animation
     }
   };
 
@@ -400,6 +437,7 @@ export default function QuizPage() {
       ...prev,
       currentIndex: 0,
       score: 0,
+      totalPoints: 0,
       selected: null,
       isRevealing: false,
       isFinished: false,
@@ -410,11 +448,14 @@ export default function QuizPage() {
       wrongAnswers: 0,
       timeoutAnswers: 0,
       totalTime: 0,
-      questionTimes: []
+      questionTimes: [],
+      questionPoints: []
     }));
     setSmoothTimeLeft(15);
     setBonusTime(0);
     setQuestionStartTime(Date.now());
+    setShowPointsAnimation(false);
+    setEarnedPoints(0);
     
     // Load new questions immediately
     try {
@@ -591,21 +632,16 @@ export default function QuizPage() {
 
   if (quiz.isFinished) {
     const accuracy = Math.round((quiz.score / quiz.questions.length) * 100);
+    const avgPointsPerQuestion = quiz.questionPoints.length > 0 ? Math.round(quiz.totalPoints / quiz.questionPoints.length) : 0;
     const avgTimePerQuestion = quiz.questionTimes.length > 0 ? (quiz.totalTime / quiz.questionTimes.length) : 0;
     const totalMinutes = Math.floor(quiz.totalTime / 60);
     const totalSeconds = Math.round(quiz.totalTime % 60);
     const fastestTime = quiz.questionTimes.length > 0 ? Math.min(...quiz.questionTimes) : 0;
+    const maxPossiblePoints = quiz.questions.length * 100;
+    const scorePercentage = Math.round((quiz.totalPoints / maxPossiblePoints) * 100);
     
-    const getPerformanceRating = () => {
-      if (accuracy === 100) return { emoji: "👑", title: "LEGENDARY!", rank: "S+", color: "from-yellow-200 via-amber-300 to-orange-400", glow: "shadow-amber-400/50" };
-      if (accuracy >= 90) return { emoji: "🏆", title: "Excellent!", rank: "A-Rank", color: "from-emerald-300 via-green-400 to-teal-400", glow: "shadow-emerald-400/40" };
-      if (accuracy >= 80) return { emoji: "🥇", title: "Great Job!", rank: "B-Rank", color: "from-blue-300 via-cyan-400 to-indigo-400", glow: "shadow-blue-400/40" };
-      if (accuracy >= 70) return { emoji: "🥈", title: "Good Work!", rank: "C-Rank", color: "from-purple-300 via-violet-400 to-fuchsia-400", glow: "shadow-purple-400/40" };
-      if (accuracy >= 60) return { emoji: "🥉", title: "Not Bad!", rank: "D-Rank", color: "from-orange-300 via-amber-400 to-yellow-400", glow: "shadow-orange-400/40" };
-      return { emoji: "📚", title: "Keep Trying!", rank: "E-Rank", color: "from-slate-300 via-gray-400 to-zinc-400", glow: "shadow-gray-400/30" };
-    };
-    
-    const performance = getPerformanceRating();
+    // Use new performance rating based on average points
+    const performance = getPerformanceRating(avgPointsPerQuestion);
     
     return (
       <main className="relative min-h-screen w-full overflow-hidden bg-[#070a18] text-white flex items-center justify-center py-8">
@@ -655,31 +691,42 @@ export default function QuizPage() {
                 </div>
               </div>
 
-              {/* Epic Score Display */}
+              {/* Epic Score Display - New Time-Based System */}
               <div className="text-center mb-12 p-8 rounded-3xl bg-gradient-to-br from-white/5 via-transparent to-white/5 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] animate-[fadeIn_1s_ease_.7s_both]">
-                <p className="text-white/50 text-sm uppercase tracking-[0.3em] mb-4 font-bold">YOUR SCORE</p>
+                <p className="text-white/50 text-sm uppercase tracking-[0.3em] mb-4 font-bold">YOUR TOTAL SCORE</p>
                 
                 {/* Animated Score Counter */}
                 <div className="relative mb-6">
-                  <div className={`text-8xl md:text-9xl font-black bg-gradient-to-r ${performance.color} bg-clip-text text-transparent drop-shadow-2xl filter ${performance.glow} animate-pulse`}>
-                    {quiz.score}<span className="text-white/30 text-6xl md:text-7xl">/{quiz.questions.length}</span>
+                  <div className={`text-8xl md:text-9xl font-black bg-gradient-to-r ${performance.color} bg-clip-text text-transparent drop-shadow-2xl filter animate-pulse`}>
+                    {quiz.totalPoints}<span className="text-white/30 text-4xl md:text-5xl"> pts</span>
                   </div>
                   
                   {/* Floating glow effect */}
                   <div className={`absolute inset-0 text-8xl md:text-9xl font-black bg-gradient-to-r ${performance.color} bg-clip-text text-transparent blur-xl opacity-20 animate-pulse`}>
-                    {quiz.score}<span className="text-white/10">/{quiz.questions.length}</span>
+                    {quiz.totalPoints}<span className="text-white/10"> pts</span>
                   </div>
                 </div>
                 
-                <div className={`text-3xl md:text-4xl font-bold bg-gradient-to-r ${performance.color} bg-clip-text text-transparent mb-2`}>
-                  {accuracy}% Accuracy
+                <div className="flex justify-center gap-8 text-center mb-4">
+                  <div>
+                    <div className={`text-2xl md:text-3xl font-bold bg-gradient-to-r ${performance.color} bg-clip-text text-transparent`}>
+                      {avgPointsPerQuestion}
+                    </div>
+                    <div className="text-white/60 text-sm">Avg per Question</div>
+                  </div>
+                  <div>
+                    <div className={`text-2xl md:text-3xl font-bold bg-gradient-to-r ${performance.color} bg-clip-text text-transparent`}>
+                      {scorePercentage}%
+                    </div>
+                    <div className="text-white/60 text-sm">Total Efficiency</div>
+                  </div>
                 </div>
                 
                 {/* Progress Bar Animation */}
                 <div className="relative w-full h-3 rounded-full bg-white/10 overflow-hidden">
                   <div 
-                    className={`h-full bg-gradient-to-r ${performance.color} rounded-full transition-all duration-2000 ease-out shadow-lg ${performance.glow}`}
-                    style={{ width: `${accuracy}%` }}
+                    className={`h-full bg-gradient-to-r ${performance.color} rounded-full transition-all duration-2000 ease-out shadow-lg`}
+                    style={{ width: `${scorePercentage}%` }}
                   />
                   <div className={`absolute inset-0 bg-gradient-to-r ${performance.color} opacity-30 animate-pulse rounded-full`} />
                 </div>
@@ -856,22 +903,204 @@ export default function QuizPage() {
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#070a18] text-white">
       <Atmosphere />
-      {/* Top HUD */}
-      <div className="relative z-20 w-full px-4 pt-6 flex items-center justify-center">
-        <div className="flex items-center gap-6 text-[13px] font-semibold tracking-wide rounded-full px-6 py-3 bg-white/5 border border-white/10 backdrop-blur-xl shadow-[0_4px_18px_rgba(0,0,0,0.4)] animate-[fadeIn_.7s_ease]">
-          <span className="text-white/70">Question <span className="text-white">{quiz.currentIndex + 1}</span>/<span className="text-white/40">{quiz.questions.length}</span></span>
-          <span className="text-white/30">•</span>
-          <span className="text-white/70">Score <span className="text-white">{quiz.score}</span></span>
-          <span className="text-white/30">•</span>
-          <span className={`${quiz.timeLeft <= 5 ? 'text-rose-300' : 'text-fuchsia-200'} flex items-center gap-1`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3M12 22a10 10 0 110-20 10 10 0 010 20z"/></svg>
-            {quiz.timeLeft}s
-          </span>
+      {/* Premium Top HUD - Modern Design */}
+      <div className="relative z-20 w-full px-4 pt-8 md:pt-12 animate-[fadeIn_.8s_ease]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            {/* Left side - Progress & Questions */}
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="relative group">
+                {/* Circular Progress Ring */}
+                <div className="relative w-12 h-12 md:w-16 md:h-16">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 64 64">
+                    {/* Background circle */}
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      fill="none"
+                      className="text-white/10"
+                    />
+                    {/* Progress circle */}
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="url(#progressGradient)"
+                      strokeWidth="3"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 28}`}
+                      strokeDashoffset={`${2 * Math.PI * 28 * (1 - (quiz.currentIndex + 1) / quiz.questions.length)}`}
+                      className="transition-all duration-700 ease-out"
+                      strokeLinecap="round"
+                    />
+                    {/* Gradient definition */}
+                    <defs>
+                      <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#e879f9" />
+                        <stop offset="50%" stopColor="#ec4899" />
+                        <stop offset="100%" stopColor="#f97316" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-sm md:text-lg font-bold text-white">{quiz.currentIndex + 1}</span>
+                  </div>
+                </div>
+                {/* Question counter tooltip */}
+                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                  <div className="px-3 py-1 rounded-lg bg-black/80 text-white text-xs font-medium whitespace-nowrap backdrop-blur-sm">
+                    Question {quiz.currentIndex + 1} of {quiz.questions.length}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Category & Difficulty Badge */}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <div className="px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 border border-violet-400/30 backdrop-blur-sm">
+                    <span className="text-xs md:text-sm font-bold text-violet-200 uppercase tracking-wider">{category}</span>
+                  </div>
+                </div>
+                <div className="text-[10px] md:text-xs text-white/50 font-medium tracking-wide uppercase">{difficulty} Mode</div>
+              </div>
+            </div>
+
+            {/* Center - Timer (Hero Element) */}
+            <div className="relative group">
+              <div className={`relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full transition-all duration-300 ${
+                quiz.timeLeft <= 5 
+                  ? 'bg-gradient-to-br from-rose-500/30 to-red-600/20 shadow-[0_0_40px_rgba(244,63,94,0.5)]' 
+                  : quiz.timeLeft <= 10
+                  ? 'bg-gradient-to-br from-amber-500/30 to-orange-600/20 shadow-[0_0_40px_rgba(245,158,11,0.5)]'
+                  : 'bg-gradient-to-br from-fuchsia-500/30 to-pink-600/20 shadow-[0_0_40px_rgba(217,70,239,0.5)]'
+              } backdrop-blur-xl border-2 ${
+                quiz.timeLeft <= 5 ? 'border-rose-400/40' : quiz.timeLeft <= 10 ? 'border-amber-400/40' : 'border-fuchsia-400/40'
+              } hover:scale-105 transition-transform duration-200`}>
+                
+                {/* Timer display */}
+                <div className="text-center relative z-10">
+                  <div className={`text-2xl md:text-3xl font-black font-mono tracking-tight ${
+                    quiz.timeLeft <= 5 ? 'text-rose-100' : quiz.timeLeft <= 10 ? 'text-amber-100' : 'text-fuchsia-100'
+                  } drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition-colors duration-300`}>
+                    {quiz.timeLeft}
+                  </div>
+                  <div className="text-[8px] md:text-[10px] font-bold text-white/70 uppercase tracking-wider -mt-1">
+                    SEC
+                  </div>
+                </div>
+                
+                {/* Inner glow effect */}
+                <div className={`absolute inset-2 rounded-full ${
+                  quiz.timeLeft <= 5 
+                    ? 'bg-gradient-to-br from-rose-400/20 to-transparent'
+                    : quiz.timeLeft <= 10
+                    ? 'bg-gradient-to-br from-amber-400/20 to-transparent'
+                    : 'bg-gradient-to-br from-fuchsia-400/20 to-transparent'
+                } blur-sm`} />
+              </div>
+              
+              {/* Circular progress timer - smooth countdown */}
+              <div className="absolute inset-0 w-20 h-20 md:w-24 md:h-24">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 96 96">
+                  {/* Background circle */}
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="44"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    fill="none"
+                    className="text-white/10"
+                  />
+                  {/* Progress circle */}
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="44"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeDasharray={`${2 * Math.PI * 44}`}
+                    strokeDashoffset={`${2 * Math.PI * 44 * (1 - (smoothTimeLeft / 15))}`}
+                    className={`transition-all duration-100 ease-linear ${
+                      quiz.timeLeft <= 5 
+                        ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]' 
+                        : quiz.timeLeft <= 10 
+                        ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                        : 'text-fuchsia-400 drop-shadow-[0_0_8px_rgba(217,70,239,0.6)]'
+                    }`}
+                    strokeLinecap="round"
+                    style={{
+                      filter: 'drop-shadow(0 0 4px currentColor)',
+                      transition: quiz.isRevealing ? 'none' : 'stroke-dashoffset 100ms linear'
+                    }}
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Right side - Professional Score & Performance */}
+            <div className="flex items-center gap-3 md:gap-4">
+              {/* Minimalist Score Display */}
+              <div className="relative group">
+                <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-300">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-fuchsia-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl md:text-2xl font-black text-white">{quiz.totalPoints}</span>
+                      <span className="text-sm text-white/40 font-medium">pts</span>
+                    </div>
+                  </div>
+                  <div className="h-6 w-px bg-white/20"></div>
+                  <div className="text-right">
+                    <div className="text-xs font-bold text-white/90">
+                      {quiz.currentIndex > 0 ? Math.round(quiz.totalPoints / quiz.currentIndex) : 0}
+                    </div>
+                    <div className="text-[10px] text-white/50 uppercase tracking-wider">
+                      Avg/Question
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Points Animation - Below Score Box */}
+                {showPointsAnimation && (
+                  <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 pointer-events-none z-50">
+                    <div className="animate-[pointsUp_2s_ease-out_forwards] text-2xl md:text-3xl font-black text-emerald-400 drop-shadow-[0_2px_8px_rgba(52,211,153,0.8)] filter whitespace-nowrap">
+                      +{earnedPoints} pts
+                    </div>
+                    <div className="absolute inset-0 animate-[pointsUp_2s_ease-out_forwards] text-2xl md:text-3xl font-black text-emerald-400 blur-sm opacity-50 whitespace-nowrap">
+                      +{earnedPoints} pts
+                    </div>
+                  </div>
+                )}
+                
+                {/* Professional tooltip */}
+                <div className="absolute -bottom-8 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                  <div className="px-3 py-2 rounded-lg bg-black/90 text-white text-xs backdrop-blur-xl border border-white/20">
+                    <div className="flex flex-col gap-1 text-center">
+                      <div className="text-emerald-300">✓ {quiz.correctAnswers} Correct</div>
+                      {quiz.wrongAnswers > 0 && <div className="text-rose-300">✗ {quiz.wrongAnswers} Wrong</div>}
+                      {quiz.timeoutAnswers > 0 && <div className="text-amber-300">⏱ {quiz.timeoutAnswers} Timeout</div>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+
+              
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      
 
       {/* Core Content */}
-      <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-12 md:pt-20">
+      <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-8 md:pt-16">
         {quiz.currentIndex === 0 && !quiz.isPlaying && !quiz.isFinished ? (
           <div className="max-w-2xl mx-auto text-center animate-[fadeIn_.7s_ease]">
             <div className="relative overflow-hidden rounded-3xl p-12 border border-white/10 bg-gradient-to-br from-violet-500/25 via-fuchsia-500/10 to-indigo-500/10 backdrop-blur-xl shadow-[0_10px_40px_-5px_rgba(0,0,0,0.55)]">
@@ -900,9 +1129,10 @@ export default function QuizPage() {
                       {quiz.isRevealing ? 'Answer Revealed' : 'Listen & Guess'}
                     </h3>
                     <p className="text-white/50 text-sm">
-                      {quiz.isRevealing ? 'Answer revealed' : `Preview • ${quiz.timeLeft}s remaining`}
-                      {!quiz.isRevealing && (
-                        <span className="ml-2">• Volume: {isMuted ? 'Muted' : `${Math.round(volume)}%`}</span>
+                      {quiz.isRevealing ? (
+                        'Answer revealed'
+                      ) : (
+                        `Audio preview playing • ${currentQuestion.startTime}s-${currentQuestion.endTime}s`
                       )}
                     </p>
                   </div>
@@ -922,77 +1152,19 @@ export default function QuizPage() {
                       </svg>
                     )}
                   </button>
-                  {/* Spotify-style volume slider with theme colors */}
-                  <div 
-                    className="relative w-20 h-1 rounded-full bg-white/15 cursor-pointer group hover:h-1.5 transition-all duration-150"
-                    onMouseEnter={(e) => {
-                      // Show handle on hover
-                      const handle = e.currentTarget.querySelector('.volume-handle') as HTMLElement;
-                      if (handle) handle.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      // Hide handle when not dragging
-                      const handle = e.currentTarget.querySelector('.volume-handle') as HTMLElement;
-                      if (handle && !handle.classList.contains('dragging')) {
-                        handle.style.opacity = '0';
-                      }
-                    }}
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const x = e.clientX - rect.left;
-                      const newVolume = (x / rect.width) * 100;
-                      handleVolumeChange(newVolume);
-                    }}
-                  >
-                    {/* Volume progress fill with smooth animation */}
-                    <div 
-                      className="h-full bg-gradient-to-r from-fuchsia-400 to-pink-500 rounded-full transition-all duration-100 ease-out relative"
-                      style={{ width: `${isMuted ? 0 : volume}%` }}
-                    >
-                      {/* apply styles for the volume handle */}
-                      <div 
-                        className="volume-handle absolute top-1/2 right-0 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 transition-all duration-150 cursor-grab active:cursor-grabbing transform -translate-y-1/2 translate-x-1/2 hover:scale-110"
-                        style={{ 
-                          boxShadow: '0 2px 8px rgba(217, 70, 239, 0.4)',
-                        }}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          
-                          const handle = e.currentTarget;
-                          handle.classList.add('dragging');
-                          handle.style.opacity = '1';
-                          
-                          const slider = handle.closest('.relative') as HTMLElement;
-                          
-                          const handleMouseMove = (e: MouseEvent) => {
-                            if (slider) {
-                              const rect = slider.getBoundingClientRect();
-                              const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
-                              const newVolume = (x / rect.width) * 100;
-                              handleVolumeChange(newVolume);
-                            }
-                          };
-                          
-                          const handleMouseUp = () => {
-                            handle.classList.remove('dragging');
-                            handle.style.opacity = '0';
-                            document.removeEventListener('mousemove', handleMouseMove);
-                            document.removeEventListener('mouseup', handleMouseUp);
-                            document.body.style.userSelect = '';
-                          };
-                          
-                          document.body.style.userSelect = 'none';
-                          document.addEventListener('mousemove', handleMouseMove);
-                          document.addEventListener('mouseup', handleMouseUp);
-                        }}
-                      />
-                    </div>
+                  {/* Volume display indicator */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                    <svg className="w-3 h-3 text-white/60" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5 6 9H2v6h4l5 4V5Zm5 4v6m4-8v10"/>
+                    </svg>
+                    <span className="text-xs font-medium text-white/70">
+                      {isMuted ? 'Muted' : `${Math.round(volume)}%`}
+                    </span>
                   </div>
                 </div>
               </div>
               {/* Visualizer */}
-              <div className="flex items-end justify-center gap-1 h-32 mb-8">
+              <div className="flex items-end justify-center gap-1 h-32 mb-6">
                 {visualizerHeights.map((h, i) => (
                   <div
                     key={i}
@@ -1004,8 +1176,72 @@ export default function QuizPage() {
                   />
                 ))}
               </div>
+              
+              {/* Volume Control Section */}
+              <div className="flex items-center gap-3 mb-6">
+                <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5 6 9H2v6h4l5 4V5Zm5 4v6m4-8v10"/>
+                </svg>
+                <div 
+                  className="flex-1 relative h-2 rounded-full bg-white/15 cursor-pointer group hover:h-2.5 transition-all duration-150"
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const newVolume = (x / rect.width) * 100;
+                    handleVolumeChange(newVolume);
+                  }}
+                >
+                  {/* Volume progress fill */}
+                  <div 
+                    className="h-full bg-gradient-to-r from-fuchsia-400 to-pink-500 rounded-full transition-all duration-100 ease-out relative"
+                    style={{ width: `${isMuted ? 0 : volume}%` }}
+                  >
+                    {/* Volume handle */}
+                    <div 
+                      className="volume-handle absolute top-1/2 right-0 w-4 h-4 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-150 cursor-grab active:cursor-grabbing transform -translate-y-1/2 translate-x-1/2 hover:scale-110"
+                      style={{ 
+                        boxShadow: '0 2px 8px rgba(217, 70, 239, 0.4)',
+                      }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const handle = e.currentTarget;
+                        handle.classList.add('dragging');
+                        handle.style.opacity = '1';
+                        
+                        const slider = handle.closest('.relative') as HTMLElement;
+                        
+                        const handleMouseMove = (e: MouseEvent) => {
+                          if (slider) {
+                            const rect = slider.getBoundingClientRect();
+                            const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+                            const newVolume = (x / rect.width) * 100;
+                            handleVolumeChange(newVolume);
+                          }
+                        };
+                        
+                        const handleMouseUp = () => {
+                          handle.classList.remove('dragging');
+                          handle.style.opacity = '0';
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                          document.body.style.userSelect = '';
+                        };
+                        
+                        document.body.style.userSelect = 'none';
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    />
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-white/70 min-w-[3rem] text-right">
+                  {isMuted ? 'Muted' : `${Math.round(volume)}%`}
+                </span>
+              </div>
               {/* Ultra-smooth Progress Bar */}
-              <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden mb-4">
+              <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden mb-6">
                 <div 
                   className="h-full bg-gradient-to-r from-fuchsia-400 via-pink-500 to-violet-500 rounded-full" 
                   style={{ 
@@ -1014,10 +1250,7 @@ export default function QuizPage() {
                   }} 
                 />
               </div>
-              <div className="flex justify-between text-[11px] uppercase tracking-wider text-white/40 font-semibold">
-                <span>0s</span><span>15s</span>
-              </div>
-              {/* Hidden YouTube Player with Bonus Time Support */}
+              {/* Hidden YouTube Player with Bonus Time Support - Improved UX */}
               <div className="hidden">
                 <iframe
                   key={`music-${quiz.currentIndex}-${iframeKey}-${currentQuestion.videoId}`}
