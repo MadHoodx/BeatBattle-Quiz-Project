@@ -9,7 +9,7 @@ import {
   PlaylistResponse,
   getSongsByCategory as getPlaylistSongs 
 } from '@/services/youtube-playlist';
-import { AVAILABLE_CATEGORIES } from '@/config/playlists';
+import { AVAILABLE_CATEGORIES, CONFIG } from '@/config/playlists';
 
 export interface Song {
   videoId: string;
@@ -48,7 +48,7 @@ export const CATEGORIES = {
   thai: 'Thai Pop',
   western: 'Pop Hits',
   kdrama: 'K-Drama OST',
-  rock: 'Rock/Metal'
+  // Removed 'rock' category due to errors; add it back only when playlists and mappings are ready
 } as const;
 
 export type CategoryKey = keyof typeof CATEGORIES;
@@ -71,7 +71,7 @@ export async function getSongsByCategory(
   }
 ): Promise<{ songs: Song[]; info: DataSourceInfo }> {
   const { 
-    maxResults = 50, 
+    maxResults = CONFIG.maxSongsPerCategory, 
     useCache = true, 
     fallbackEnabled = true
   } = options || {};
@@ -172,6 +172,7 @@ export async function getCategoryStats(category: string): Promise<{
   try {
     const result = await getSongsByCategory(category, { 
       maxResults: 1,
+      useCache: false,
       fallbackEnabled: true // ให้ fallback เมื่อ playlist ไม่ถูกต้อง
     });
     return {
@@ -251,59 +252,85 @@ export async function generateQuizQuestions(
   category: string = 'kpop',
   count: number = 10
 ): Promise<QuizQuestion[]> {
+  console.log(`🎵 Getting songs from multi-category system for: ${category}`);
+  
   const { songs } = await getSongsByCategory(category, { 
-    maxResults: count * 4 // Get more songs for choices
+    maxResults: Math.max(50, count * 8) // Get more songs for better choices (minimum 50, or 8x the question count)
   });
+
+  console.log(`📍 Found ${songs.length} songs for category: ${category}`);
+  console.log(`🎵 Generated ${count} questions`);
 
   if (songs.length < count) {
     throw new Error(`Not enough songs found for category: ${category}`);
   }
 
   const questions: QuizQuestion[] = [];
-  const usedSongs = new Set<string>();
+  const selectedSongTitles: string[] = [];
 
-  for (let i = 0; i < count && i < songs.length; i++) {
-    const correctSong = songs[i];
-    if (usedSongs.has(correctSong.videoId)) continue;
-    
-    usedSongs.add(correctSong.videoId);
+  // Helper: Fisher-Yates shuffle
+  const shuffle = <T,>(arr: T[]) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
 
-    // Generate exactly 3 wrong choices from ALL songs in playlist (not just unused ones)
-    const availableTitles = songs
-      .filter(s => s.videoId !== correctSong.videoId) // Only exclude the current correct song
-      .map(s => s.title)
-      .filter(title => title !== correctSong.title && title.trim().length > 0); // Exclude correct title and empty titles
-    
-    // Remove duplicates and shuffle
-    const uniqueTitles = [...new Set(availableTitles)]
-      .sort(() => Math.random() - 0.5);
+  // Shuffle songs once
+  const pool = shuffle(songs);
 
-    // Always get exactly 3 wrong choices
-    let wrongChoices: string[] = [];
-    
-    if (uniqueTitles.length >= 3) {
-      // We have enough unique titles
-      wrongChoices = uniqueTitles.slice(0, 3);
-    } else if (uniqueTitles.length > 0) {
-      // Use what we have and cycle through if needed
-      wrongChoices = [...uniqueTitles];
-      
-      // Fill remaining slots by repeating from available titles
-      while (wrongChoices.length < 3) {
-        const nextChoice = uniqueTitles[wrongChoices.length % uniqueTitles.length];
-        wrongChoices.push(nextChoice);
+  // Stride-based sampling: choose evenly spaced indices across the pool so small samples cover the full list
+  const poolSize = pool.length;
+  const sampleCount = Math.min(count, poolSize);
+  const step = Math.max(1, Math.floor(poolSize / sampleCount));
+  const start = Math.floor(Math.random() * Math.max(1, step));
+
+  // Build a title pool for wrong choices grouped by artist for smarter selection
+  const titlesByArtist: Record<string, string[]> = {};
+  for (const s of pool) {
+    const artist = (s.artist || 'unknown').toString();
+    if (!titlesByArtist[artist]) titlesByArtist[artist] = [];
+    if (s.title && s.title.trim().length > 0) titlesByArtist[artist].push(s.title);
+  }
+
+  const allTitles = Array.from(new Set(pool.map(s => s.title).filter(Boolean)));
+
+  for (let k = 0; questions.length < sampleCount && k < sampleCount; k++) {
+    const idx = (start + k * step) % poolSize;
+    const correctSong = pool[idx];
+    if (!correctSong || !correctSong.videoId) continue;
+
+    selectedSongTitles.push(correctSong.title);
+
+    // Try to pick wrong choices from different artists first
+    const wrongChoices: string[] = [];
+    const artists = Object.keys(titlesByArtist).filter(a => a !== (correctSong.artist || 'unknown'));
+    const shuffledArtists = shuffle(artists);
+
+    for (let i = 0; i < shuffledArtists.length && wrongChoices.length < 3; i++) {
+      const poolTitles = titlesByArtist[shuffledArtists[i]] || [];
+      for (const t of shuffle(poolTitles)) {
+        if (t !== correctSong.title && !wrongChoices.includes(t)) {
+          wrongChoices.push(t);
+          break;
+        }
       }
-    } else {
-      // Extremely rare case: create generic fallback
-      wrongChoices = ['Option A', 'Option B', 'Option C'];
     }
 
-    // Ensure exactly 4 choices: 1 correct + 3 wrong
-    const choices = [correctSong.title, ...wrongChoices.slice(0, 3)].sort(() => Math.random() - 0.5);
+    // Fill remaining slots from global title pool
+    const shuffledAll = shuffle(allTitles.filter(t => t !== correctSong.title && !wrongChoices.includes(t)));
+    for (let i = 0; i < shuffledAll.length && wrongChoices.length < 3; i++) {
+      wrongChoices.push(shuffledAll[i]);
+    }
+
+    while (wrongChoices.length < 3) wrongChoices.push(`Option ${wrongChoices.length + 1}`);
+
+    const choices = shuffle([correctSong.title, ...wrongChoices.slice(0, 3)]);
     const correctAnswer = choices.indexOf(correctSong.title);
 
-    // Generate random timing for this question (pass index for extra randomness)
-    const timing = getRandomTiming(correctSong.title, i);
+    const timing = getRandomTiming(correctSong.title, questions.length);
 
     questions.push({
       videoId: correctSong.videoId,
@@ -315,6 +342,9 @@ export async function generateQuizQuestions(
       endTime: timing.endTime
     });
   }
+
+  // Log selected songs
+  console.log(`🎵 Selected songs: ${selectedSongTitles.join(', ')}`);
 
   return questions;
 }
@@ -358,7 +388,8 @@ export const DataUtils = {
   
   // Get data source info
   getDataSourceInfo: async (category: string): Promise<DataSourceInfo> => {
-    const { info } = await getSongsByCategory(category, { maxResults: 1 });
+    // Bypass cache to ensure up-to-date info (useCache: false)
+    const { info } = await getSongsByCategory(category, { maxResults: 1, useCache: false });
     return info;
   }
 };

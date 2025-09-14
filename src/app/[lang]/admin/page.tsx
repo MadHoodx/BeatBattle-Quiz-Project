@@ -50,6 +50,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [removeMissing, setRemoveMissing] = useState<boolean>(false);
+  const [syncMaxResults, setSyncMaxResults] = useState<number>(100);
 
   // Initialize playlist service
   const playlistService = new YouTubePlaylistService(
@@ -162,6 +164,67 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
     setRefreshing(null);
   };
 
+  const syncCategoryToSupabase = async (category: string, maxResults: number = 100) => {
+    addLog(`🔁 Syncing category to Supabase: ${category} (maxResults=${maxResults}, removeMissing=${removeMissing})`);
+    try {
+      // If removeMissing is requested, first ask server for a preview of candidates
+      if (removeMissing) {
+        addLog('🔎 Previewing candidates to remove...');
+        const previewRes = await fetch('/api/sync-playlist/youtube', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category, maxResults, removeMissing: true, preview: true })
+        });
+        const previewJson = await previewRes.json();
+        if (!previewRes.ok) {
+          addLog(`❌ Preview failed: ${previewJson.error || JSON.stringify(previewJson)}`);
+          return;
+        }
+
+        addLog(`📝 Preview: ${previewJson.totalCandidates || 0} candidate(s) to remove`);
+
+        // Show a simple confirmation with up to 5 sample titles
+        const samples: string[] = [];
+        (previewJson.categoryCandidates || []).slice(0,5).forEach((s: any) => samples.push(`${s.override_title || s.source_title} (${s.source_id})`));
+        (previewJson.legacyCandidates || []).slice(0,5).forEach((s: any) => samples.push(`${s.override_title || s.source_title} [legacy] (${s.source_id})`));
+
+  const msg = `Preview found ${previewJson.totalCandidates || 0} items to remove for ${category}. Sample:\n\n${samples.join('\n')}\n\nProceed to delete these items from Supabase?`;
+        const ok = window.confirm(msg);
+        if (!ok) {
+          addLog('🛑 Delete cancelled by admin');
+          return;
+        }
+
+        // Admin confirmed — perform actual sync (without preview) which will delete
+        addLog('🗑️ Admin confirmed delete — running sync and removing missing items...');
+      }
+
+      const res = await fetch('/api/sync-playlist/youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, maxResults, removeMissing })
+      });
+
+      const json = await res.json();
+      if (res.ok) {
+        addLog(`✅ Sync completed: ${json.total || 0} songs upserted for ${category}. Removed: ${json.removed || 0}`);
+        // Clear client-side cached playlist data used by DataUtils
+        try {
+          DataUtils.clearCache();
+          addLog('🧹 Cleared client playlist cache');
+        } catch (e) {
+          addLog(`⚠️ Failed to clear cache: ${e}`);
+        }
+        // Refresh admin data to reflect new counts
+        await loadAdminData();
+      } else {
+        addLog(`❌ Sync failed: ${json.error || JSON.stringify(json)}`);
+      }
+    } catch (err) {
+      addLog(`💥 Sync error: ${err}`);
+    }
+  };
+
   const clearAllCache = async () => {
     addLog('🗑️ Clearing all cache data...');
     await DataUtils.clearCache();
@@ -263,7 +326,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold mb-4 text-white">🎯 Playlist Configuration</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Object.entries(PLAYLIST_IDS).map(([category, playlistId]) => {
+            {Object.entries(PLAYLIST_IDS).filter(([category]) => category !== 'rock').map(([category, playlistId]) => {
               const isConfigured = !playlistId.includes('PLxxxxxxxxxxxxxxxxxxxxxx');
               const categoryName = CATEGORIES[category as keyof typeof CATEGORIES] || category;
               
@@ -296,6 +359,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
                         ⚠️ Please set actual YouTube playlist ID in playlists.ts
                       </div>
                     )}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => syncCategoryToSupabase(category)}
+                        className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded"
+                      >
+                        🔁 Sync to Supabase
+                      </button>
+                      <button
+                        onClick={() => validatePlaylist(playlistId)}
+                        className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded"
+                      >
+                        🔍 Validate
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -347,7 +424,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold mb-4 text-white">⚙️ Playlist Configuration</h2>
           <div className="space-y-3">
-            {Object.entries(PLAYLIST_IDS).map(([category, playlistId]) => (
+            <div className="flex items-center gap-3 mb-2">
+              <label className="text-sm text-gray-300 flex items-center gap-2">
+                <input type="checkbox" checked={removeMissing} onChange={(e) => setRemoveMissing(e.target.checked)} className="form-checkbox" />
+                <span className="ml-1">Remove missing from Supabase when syncing</span>
+              </label>
+              <label className="text-sm text-gray-300 flex items-center gap-2">
+                <span>MaxResults</span>
+                <input type="number" value={syncMaxResults} onChange={(e) => setSyncMaxResults(Number(e.target.value))} className="ml-2 w-24 text-black rounded px-1" />
+              </label>
+            </div>
+            {Object.entries(PLAYLIST_IDS).filter(([category]) => category !== 'rock').map(([category, playlistId]) => (
               <div key={category} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <span className="text-lg">
@@ -358,13 +445,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
                     <div className="text-xs text-gray-400 font-mono">{playlistId}</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  {playlistId.includes('PLxxxxxxxxxxxxxxxxxxxxxx') ? (
-                    <span className="bg-orange-600 text-white px-2 py-1 rounded text-xs">Not Configured</span>
-                  ) : (
-                    <span className="bg-green-600 text-white px-2 py-1 rounded text-xs">Configured</span>
-                  )}
-                </div>
+                    <div className="text-right space-x-2">
+                    <button
+                      onClick={() => syncCategoryToSupabase(category, syncMaxResults)}
+                      className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded mr-2"
+                    >
+                      🔁 Sync
+                    </button>
+                    {playlistId.includes('PLxxxxxxxxxxxxxxxxxxxxxx') ? (
+                      <span className="bg-orange-600 text-white px-2 py-1 rounded text-xs">Not Configured</span>
+                    ) : (
+                      <span className="bg-green-600 text-white px-2 py-1 rounded text-xs">Configured</span>
+                    )}
+                  </div>
               </div>
             ))}
           </div>
@@ -380,7 +473,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold mb-4 text-white">🎵 Category Status</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {categoryStatuses.map(status => (
+            {categoryStatuses.filter(s => s.category !== 'rock').map(status => (
               <div 
                 key={status.category}
                 className="p-4 rounded-lg bg-gray-700 border-2 border-gray-600"

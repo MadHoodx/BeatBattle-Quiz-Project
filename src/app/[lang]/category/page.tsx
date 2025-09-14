@@ -4,23 +4,23 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useI18n } from "@/context/I18nContext";
 import { useMemo, useCallback } from "react";
 import { useLangHref } from "@/components/common/LangLink";
+import { ReactNode } from "react";
 
 interface Category {
   key: string;
   label: string;
-  emoji: string;
+  emoji: ReactNode;
   gradient: string;
   ring: string;
   desc: string;
 }
 
 const categories: Category[] = [
-  { key: "kpop",    label: "K-Pop",     emoji: "KR", gradient: "from-violet-500/35 via-fuchsia-500/10 to-indigo-700/20", ring:"ring-violet-400/35", desc: "Korean pop hits from BTS, BLACKPINK & more!" },
-  { key: "jpop",    label: "J-Pop",     emoji: "JP", gradient: "from-rose-400/40 via-pink-500/15 to-violet-700/20",   ring:"ring-rose-300/40",    desc: "Japanese pop from YOASOBI, Official髭男dism!" },
-  { key: "thai",    label: "Thai Pop",  emoji: "TH", gradient: "from-amber-300/40 via-indigo-600/20 to-fuchsia-600/20", ring:"ring-amber-300/40", desc: "Thai pop hits and classics!" },
-  { key: "western", label: "Pop Hits",  emoji: "US", gradient: "from-indigo-400/40 via-violet-600/20 to-amber-500/25", ring:"ring-indigo-300/40",  desc: "Top Western pop from Taylor Swift, Dua Lipa!" },
-  { key: "KDrama",   label: "K-Drama Ost", emoji: "🇰🇷", gradient: "from-emerald-400/40 via-teal-500/15 to-cyan-600/20", ring:"ring-emerald-300/40", desc: "Independent & alternative music vibes!" },
-  { key: "rock",    label: "Rock/Metal", emoji: "🤘", gradient: "from-red-400/40 via-orange-500/15 to-yellow-600/20", ring:"ring-red-300/40", desc: "Heavy rock and metal classics!" },
+  { key: "kpop",    label: "K-Pop",     emoji: <span className="fi fi-kr"></span>, gradient: "from-violet-500/35 via-fuchsia-500/10 to-indigo-700/20", ring:"ring-violet-400/35", desc: "Korean pop hits from BTS, BLACKPINK & more!" },
+  { key: "jpop",    label: "J-Pop",     emoji: <span className="fi fi-jp"></span>, gradient: "from-rose-400/40 via-pink-500/15 to-violet-700/20",   ring:"ring-rose-300/40",    desc: "Japanese pop from YOASOBI, Official髭男dism!" },
+  { key: "thai",    label: "Thai Pop",  emoji: <span className="fi fi-th"></span>, gradient: "from-amber-300/40 via-indigo-600/20 to-fuchsia-600/20", ring:"ring-amber-300/40", desc: "Thai pop hits and classics!" },
+  { key: "western", label: "Pop Hits",  emoji: <span className="fi fi-us"></span>, gradient: "from-indigo-400/40 via-violet-600/20 to-amber-500/25", ring:"ring-indigo-300/40",  desc: "Top Western pop from Taylor Swift, Dua Lipa!" },
+  { key: "kdrama", label: "K-Drama OST", emoji: <span className="fi fi-kr"></span>, gradient: "from-emerald-400/40 via-teal-500/15 to-cyan-600/20", ring:"ring-emerald-300/40", desc: "Korean drama soundtracks!" },
 ];
 
 function Atmosphere() {
@@ -80,7 +80,6 @@ export default function CategoryPage() {
   const catList = useMemo(() => categories, []);
 
   const goQuiz = useCallback((key: string) => {
-    // preserve current lang and difficulty - build URL manually instead of using hook
     const href = `/${currentLang}/quiz?category=${key}&difficulty=${difficulty}`;
     router.push(href);
   }, [router, difficulty, currentLang]);

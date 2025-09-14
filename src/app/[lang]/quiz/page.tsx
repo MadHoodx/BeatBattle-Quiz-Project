@@ -110,48 +110,63 @@ export default function QuizPage() {
   // Precompute visualizer heights (must be before any conditional returns to keep hook order stable)
   const visualizerHeights = useMemo(() => Array.from({ length: 24 }, () => 12 + Math.random() * 48), [quiz.currentIndex]);
 
-  // Load quiz questions with Supabase fallback
+  // Load quiz questions with optimized single API call
   useEffect(() => {
+    let isCancelled = false; // Prevent race conditions
+    
     async function loadQuiz() {
       try {
         setLoading(true);
         
+        console.log(`🎮 Quiz Page: Loading quiz for ${category} (${difficulty})`);
+        
         // Add timestamp to prevent caching
         const timestamp = Date.now();
         
-        // Try Supabase API first with cache busting
-        let response = await fetch(`/api/quiz/supabase?category=${category}&difficulty=${difficulty}&t=${timestamp}`, {
-          cache: 'no-store'
+        // Use Supabase-first quiz API
+        const response = await fetch(`/api/quiz/supabase?category=${category}&difficulty=${difficulty}&t=${timestamp}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         });
-        let data = await response.json();
-        
-        // If Supabase fails, fallback to original API
-        if (!response.ok || !data.success) {
-          console.log('🔄 Supabase failed, falling back to original API');
-          response = await fetch(`/api/youtube/quiz?category=${category}&difficulty=${difficulty}&t=${timestamp}`, {
-            cache: 'no-store'
-          });
-          data = await response.json();
-        }
         
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to load quiz');
+          throw new Error(`Failed to load quiz: ${response.status}`);
         }
-
-        console.log(`✅ Quiz loaded from: ${data.source}`);
+        
+        const data = await response.json();
+        
+        // Check if component is still mounted
+        if (isCancelled) return;
+        
+        if (!data.questions || data.questions.length === 0) {
+          throw new Error('No questions received from API');
+        }
 
         setQuiz(prev => ({
           ...prev,
-          questions: data.questions || []
+          questions: data.questions
         }));
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load quiz');
+        if (!isCancelled) {
+          console.error('❌ Quiz loading failed:', err);
+          setError(err instanceof Error ? err.message : 'Failed to load quiz');
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadQuiz();
+    
+    // Cleanup function to prevent race conditions
+    return () => {
+      isCancelled = true;
+    };
   }, [category, difficulty]);
 
   // Ultra-smooth timer effect with 50ms precision
@@ -470,20 +485,11 @@ export default function QuizPage() {
       });
       let data = await response.json();
       
-      // If Supabase fails, fallback to original API
       if (!response.ok || !data.success) {
-        console.log('🔄 Supabase failed, falling back to original API');
-        response = await fetch(`/api/youtube/quiz?category=${category}&difficulty=${difficulty}&t=${timestamp}`, {
-          cache: 'no-store'
-        });
-        data = await response.json();
-      }
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to load new quiz');
+        throw new Error(data.error || 'Failed to load new quiz from Supabase');
       }
 
-      console.log(`✅ New quiz loaded from: ${data.source}`);
+      console.log(`✅ New quiz loaded from Supabase`);
       console.log(`🎵 New songs: ${data.questions?.map((q: any) => q.title).join(', ')}`);
 
       setQuiz(prev => ({
@@ -1298,7 +1304,7 @@ export default function QuizPage() {
                   ) : (
                     <p className="text-rose-300 font-semibold flex items-center gap-2"><span>❌</span> Wrong!</p>
                   )}
-                  <p className="text-white/60 text-sm mt-2">Answer: <span className="text-white font-semibold">{currentQuestion.choices[currentQuestion.correctAnswer]}</span></p>
+                  <p className="text-white/60 text-sm mt-2">Answer: <span className="text-white font-semibold">{currentQuestion.choices[currentQuestion.correctAnswer]} - {currentQuestion.artist}</span></p>
                 </div>
               )}
             </div>

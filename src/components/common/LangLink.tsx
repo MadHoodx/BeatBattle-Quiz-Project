@@ -1,9 +1,9 @@
+"use client";
 import Link, { LinkProps } from 'next/link';
 import { useI18n } from '../../context/I18nContext';
 import React from 'react';
 
-export function useLangHref(href: string | { pathname: string; [key: string]: any }) {
-  const { lang, availableLangs } = useI18n();
+export function computeLangHref(href: string | { pathname: string; [key: string]: any }, lang: string, availableLangs: string[]) {
   const isLang = (s: string) => availableLangs.includes(s.toLowerCase());
   if (typeof href === 'string') {
     if (href.startsWith('/')) {
@@ -25,6 +25,11 @@ export function useLangHref(href: string | { pathname: string; [key: string]: an
     return { ...href, pathname: '/' + [lang, ...segments].join('/') };
   }
   return href;
+}
+
+export function useLangHref(href: string | { pathname: string; [key: string]: any }) {
+  const { lang, availableLangs } = useI18n();
+  return computeLangHref(href, lang, availableLangs);
 }
 
 type LangLinkProps = LinkProps & React.AnchorHTMLAttributes<HTMLAnchorElement> & { children: React.ReactNode };

@@ -2,12 +2,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLangHref } from "@/components/common/LangLink";
+import { useLangHref, computeLangHref } from "@/components/common/LangLink";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from '@/context/I18nContext';
 
 export default function AuthPage() {
-  const { t } = useI18n();
+  const { t, lang, availableLangs } = useI18n();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,16 +22,18 @@ export default function AuthPage() {
     setError(null);
     setSuccess(null);
     try {
-      if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        // username setup page
-  setTimeout(() => router.push(useLangHref("/profile/username") as string), 500);
+  if (mode === 'signup') {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    // username setup page
+    const usernameHref = computeLangHref("/profile/username", lang, availableLangs) as string;
+    setTimeout(() => router.push(usernameHref), 500);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        setSuccess("Login success! Redirecting...");
-  setTimeout(() => router.push(useLangHref("/") as string), 1000);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    setSuccess("Login success! Redirecting...");
+    const homeHref = computeLangHref("/", lang, availableLangs) as string;
+    setTimeout(() => router.push(homeHref), 1000);
       }
     } catch (err: any) {
       setError(err.message);

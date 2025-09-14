@@ -1,67 +1,98 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-// Use the new multi-category system
-import { getSongsByCategory, generateQuizQuestions, QuizQuestion } from '@/data'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { NextResponse } from 'next/server';
+import { getSongsByCategory, upsertSongFromPlaylistItem } from '@/lib/songs';
+import { supabase } from '@/lib/supabase';
+import { YouTubePlaylistService } from '@/services/youtube-playlist';
+import { SongCategory } from '@/types/songs';
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category') || 'kpop';
-    const difficulty = searchParams.get('difficulty') || 'casual';
-    const numQuestions = difficulty === 'hardcore' ? 10 : 5;
+const YT_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+const playlistService = new YouTubePlaylistService(YT_API_KEY);
 
-    console.log(`🎵 Using mock videos for category: ${category}, difficulty: ${difficulty}`);
-
-    
-    return await fallbackToManualData(category, difficulty, numQuestions);
-
-  } catch (error) {
-    console.error('💥 Unexpected error:', error);
-    const category = new URL(request.url).searchParams.get('category') || 'kpop';
-    const difficulty = new URL(request.url).searchParams.get('difficulty') || 'casual';
-    const numQuestions = difficulty === 'hardcore' ? 10 : 5;
-    
-    return fallbackToManualData(category, difficulty, numQuestions);
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+  return shuffled.slice(0, n);
 }
 
-async function fallbackToManualData(category: string, difficulty: string, numQuestions: number) {
-  try {
-    console.log(`🎵 Getting songs from multi-category system for: ${category}`);
-    
-    const result = await getSongsByCategory(category);
-    
-    if (result && result.songs && result.songs.length > 0) {
-      console.log(`📚 Found ${result.songs.length} songs for category: ${category}`);
-      
-      const questions = await generateQuizQuestions(category, numQuestions);
-      
-      console.log(`🎵 Generated ${questions.length} questions`);
-      console.log(`🎵 Selected songs: ${questions.map(q => q.title).join(', ')}`);
-      
-      return NextResponse.json({ 
-        success: true, 
-        source: 'centralized-data', 
-        category, 
-        difficulty, 
-        questions, 
-        quota: '0-units' 
-      });
-    }
-  } catch (fallbackError) {
-    console.error('💥 Centralized data failed:', fallbackError);
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const category = (searchParams.get('category') || 'kpop') as SongCategory;
+  const numQuestions = Number(searchParams.get('num') || 5);
+
+  // Helper: build quiz questions from song rows
+  const buildQuestions = (allSongs: any[], count: number) => {
+    const selected = pickRandom(allSongs, Math.min(count, allSongs.length));
+    return selected.map((song, idx) => {
+      const otherTitles = allSongs
+        .filter(s => s.id !== song.id)
+        .map(s => s.title)
+        .filter(t => t && t.trim().length > 0);
+      const unique = Array.from(new Set(otherTitles)).sort(() => Math.random() - 0.5);
+      const wrongChoices: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        if (unique.length > i) wrongChoices.push(unique[i]);
+        else wrongChoices.push(`Option ${i + 1}`);
+      }
+      const choices = [song.title, ...wrongChoices].sort(() => Math.random() - 0.5);
+      const correctAnswer = choices.indexOf(song.title);
+      return {
+        videoId: song.source_id,
+        title: song.title,
+        artist: song.artist,
+        choices,
+        correctAnswer,
+        startTime: 30,
+        endTime: 60
+      };
+    });
+  };
+
+  // 1. Check Supabase first
+  const { songs: existingSongs } = await getSongsByCategory(category, 1000);
+  if (existingSongs && existingSongs.length > 0) {
+    // Serve fully-formed quiz questions from Supabase
+    const questions = buildQuestions(existingSongs, numQuestions);
+    return NextResponse.json({ success: true, category, total: existingSongs.length, questions });
   }
 
-  // If all else fails, return an error
+  // 2. If no songs in Supabase, fetch from YouTube, clean, upsert, then return
+  console.log(`📡 No songs in Supabase for category=${category}. Fetching from YouTube and seeding...`);
+  const ytResult = await playlistService.getSongsByCategory(category, { maxResults: 50, useCache: true });
+  if (ytResult.songs && ytResult.songs.length > 0) {
+    // Upsert each item into Supabase (will create when missing)
+    await Promise.all(ytResult.songs.map(ytSong =>
+      upsertSongFromPlaylistItem({
+        source_id: ytSong.videoId,
+        source_provider: 'youtube',
+        source_title: ytSong.originalTitle || ytSong.title,
+        source_artist: ytSong.artist,
+        override_title: ytSong.title,
+        override_artist: ytSong.artist,
+        category,
+        thumbnail_url: ytSong.thumbnail,
+        duration_seconds: undefined,
+        metadata: {}
+      })
+    ));
+  }
+
+  // 3. Fetch from Supabase after seeding
+  const { songs } = await getSongsByCategory(category, 1000);
+  if (!songs || songs.length === 0) {
+    return NextResponse.json({ success: false, error: 'No songs found for this category after seeding.' }, { status: 404 });
+  }
+
+  const questions = buildQuestions(songs, numQuestions);
+
   return NextResponse.json({
-    success: false,
-    error: 'No quiz data available',
-    message: 'Centralized data is unavailable'
-  }, { status: 503 });
+    success: true,
+    category,
+    total: songs.length,
+    questions
+  });
 }
 
 // Analytics endpoint to track quiz completions

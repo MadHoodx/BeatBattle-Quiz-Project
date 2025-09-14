@@ -1,13 +1,35 @@
 /**
  * 🎵 Simple YouTube Playlist API Service
  * Easy-to-use playlist management with caching
+ * 
+ * ⚠️ MIGRATION NOTE: This service uses legacy auto-parsing.
+ * Consider updating to use the new Supabase-backed Songs Override System:
+ * - API: GET /api/songs
+ * - Library: @/lib/songs
+ * - Hooks: useSongs() from @/hooks/useSongs
  */
 
 import { PLAYLIST_IDS, CONFIG } from '@/config/playlists';
 
+// Legacy interfaces for backward compatibility
+interface TitleMapping {
+  originalTitle: string;
+  cleanedTitle: string;
+  artist: string;
+}
+
+// Temporary fallback functions - consider migrating to Supabase system
+const MUSIC_MAPPINGS: any = {};
+
+function findArtistByTitle(category: string, title: string): string | null {
+  console.warn('⚠️ Using deprecated findArtistByTitle. Consider migrating to Supabase system.');
+  return null;
+}
+
 export interface Song {
   videoId: string;
   title: string;
+  originalTitle?: string; // Add original title field for testing
   artist: string;
   thumbnail?: string;
   duration?: string;
@@ -97,7 +119,9 @@ export class YouTubePlaylistService {
     useCache?: boolean;
     fallbackEnabled?: boolean;
   }): Promise<PlaylistResponse> {
-    const { maxResults = 50, useCache = true, fallbackEnabled = true } = options || {};
+    // Increase default to 100 so the service will paginate and fetch more than the
+    // YouTube single-request max of 50 when needed. Callers can still override.
+    const { maxResults = 100, useCache = true, fallbackEnabled = true } = options || {};
     
     try {
       // Get playlist ID for category
@@ -126,7 +150,7 @@ export class YouTubePlaylistService {
       }
 
       // Fetch from playlist
-      const songs = await this.fetchSongsFromPlaylist(playlistId, maxResults);
+      const songs = await this.fetchSongsFromPlaylist(playlistId, maxResults, category);
       
       if (songs.length > 0) {
         // Cache the results
@@ -161,44 +185,85 @@ export class YouTubePlaylistService {
   }
 
   /**
-   * 🔄 Fetch songs from a single playlist
+   * 🔄 Fetch songs from a single playlist with pagination support
    */
-  private async fetchSongsFromPlaylist(playlistId: string, maxResults: number): Promise<Song[]> {
+  private async fetchSongsFromPlaylist(playlistId: string, maxResults: number, category?: string): Promise<Song[]> {
     if (!this.apiKey) {
       console.warn('YouTube API key not provided, using fallback data');
       return [];
     }
 
     try {
-      const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${maxResults}&playlistId=${playlistId}&key=${this.apiKey}`;
+      const allSongs: Song[] = [];
+      let nextPageToken = '';
+      let fetchedCount = 0;
       
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`YouTube API error: ${response.status} ${response.statusText}`);
-      }
+      // Fetch all pages until we have enough songs or no more pages
+      while (fetchedCount < maxResults) {
+        // YouTube API max is 50 per request
+        const remainingNeeded = Math.min(50, maxResults - fetchedCount);
+        
+        let url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${remainingNeeded}&playlistId=${playlistId}&key=${this.apiKey}`;
+        
+        if (nextPageToken) {
+          url += `&pageToken=${nextPageToken}`;
+        }
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`YouTube API error: ${response.status} ${response.statusText}`);
+        }
 
-      const data = await response.json();
+        const data = await response.json();
+        
+        if (!data.items || data.items.length === 0) {
+          break;
+        }
+        
+        const songs = data.items.map((item: any, index: number) => {
+          const originalTitle = item.snippet.title;
+          const channelTitle = item.snippet.channelTitle;
+          
+          // First clean the title to get a base version
+          const baseCleanedTitle = this.cleanTitle(originalTitle);
+          
+          // Check if we have a mapping for this title (highest priority)
+          const mappedArtist = findArtistByTitle(category || 'kpop', baseCleanedTitle);
+          const mappedTitle = this.getMappedTitle(category || 'kpop', originalTitle) || baseCleanedTitle;
+          
+          // Extract artist: use mapped artist if available, otherwise extract from title
+          const artist = mappedArtist || this.extractArtist(originalTitle, channelTitle, category || 'kpop');
+          
+          const isLyricsVideo = /lyrics?|lyric|가사|歌詞/i.test(originalTitle);
+          
+          // Smart timing based on video type
+          const timing = this.getSmartTiming(originalTitle, isLyricsVideo);
+          
+          return {
+            videoId: item.snippet.resourceId.videoId,
+            title: mappedTitle, // Use mapped title if available, otherwise cleaned title
+            originalTitle: originalTitle, // Keep the original title for testing purposes
+            artist: artist,
+            thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
+            playlistSource: playlistId,
+            position: fetchedCount + index + 1,
+            startTime: timing.startTime,
+            endTime: timing.endTime,
+            isLyricsVideo
+          };
+        });
+        
+        allSongs.push(...songs);
+        fetchedCount += songs.length;
+        
+        // Check if there are more pages
+        nextPageToken = data.nextPageToken;
+        if (!nextPageToken) {
+          break;
+        }
+      }
       
-      return data.items?.map((item: any, index: number) => {
-        const title = item.snippet.title;
-        const cleanedTitle = this.cleanTitle(title);
-        const isLyricsVideo = /lyrics?|lyric|가사|歌詞/i.test(title);
-        
-        // Smart timing based on video type
-        const timing = this.getSmartTiming(title, isLyricsVideo);
-        
-        return {
-          videoId: item.snippet.resourceId.videoId,
-          title: cleanedTitle,
-          artist: this.extractArtist(title, item.snippet.channelTitle),
-          thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
-          playlistSource: playlistId,
-          position: index + 1,
-          startTime: timing.startTime,
-          endTime: timing.endTime,
-          isLyricsVideo
-        };
-      }) || [];
+      return allSongs;
       
     } catch (error) {
       console.error(`Error fetching playlist ${playlistId}:`, error);
@@ -207,85 +272,136 @@ export class YouTubePlaylistService {
   }
 
   /**
+   * 🎯 Get mapped title from mapping file
+   */
+  private getMappedTitle(category: string, originalTitle: string): string | null {
+    const categoryData = MUSIC_MAPPINGS[category];
+    if (!categoryData) return null;
+    
+    const mapping = categoryData.titleMappings.find(
+      (m: TitleMapping) => m.originalTitle.toLowerCase() === originalTitle.toLowerCase()
+    );
+    
+    return mapping?.cleanedTitle || null;
+  }
+
+  /**
    * 🧹 Clean up video titles - Extract ONLY song name
    */
   private cleanTitle(title: string): string {
+    // Debug logging for Butter case
+    if (title.toLowerCase().includes('butter')) {
+      console.log(`🧈 BUTTER DEBUG - cleanTitle input:`, title);
+    }
+    
+    // First pass - remove common video markers and brackets
     let cleaned = title
       .replace(/\s*\[.*?\]\s*/g, '') // Remove [brackets]
-      .replace(/\s*\(.*?\)\s*/g, '') // Remove (parentheses)
+      .replace(/\s*「.*?」\s*/g, '') // Remove Japanese brackets 「」
+      .replace(/\s*『.*?』\s*/g, '') // Remove Japanese brackets 『』
+      .replace(/\s*【.*?】\s*/g, '') // Remove Japanese brackets 【】
       .replace(/\s*\|.*$/g, '')      // Remove | and everything after
+      .replace(/\s*@\w+/g, '')       // Remove @mentions like @ITZY
       .replace(/\s*-\s*Official.*$/i, '') // Remove "- Official Video" etc.
       .replace(/\s*-\s*Music.*Video.*$/i, '') // Remove "- Music Video"
       .replace(/\s*-\s*Lyrics?.*$/i, '') // Remove "- Lyrics" / "- Lyric"
-      .replace(/\s*MV\s*$/i, '')     // Remove MV at end
-      .replace(/\s*M\/V\s*$/i, '')   // Remove M/V at end
+      .replace(/\s*M\/V\s*/gi, '')   // Remove M/V anywhere
+      .replace(/\s*MV\s*/gi, '')     // Remove MV anywhere
       .replace(/\s*\(.*?Official.*?\)\s*/gi, '') // Remove (Official Video) variants
       .replace(/\s*\(.*?Lyrics?.*?\)\s*/gi, '') // Remove (Lyrics) variants
       .replace(/\s*\(.*?Lyric.*?\)\s*/gi, '') // Remove (Lyric Video) variants
+      .replace(/\s+Official\s*$/i, '') // Remove " Official" at end
+      .replace(/\s*Official\s*$/i, '') // Remove "Official" at end
+      .replace(/\s*Audio\s*$/i, '')  // Remove "Audio" at end
+      .replace(/Audio\s*$/i, '')     // Remove "Audio" at end (no space)
       .replace(/\s*Lyrics?\s*$/i, '') // Remove Lyrics at end
       .replace(/\s*Lyric\s*$/i, '')  // Remove Lyric at end
       .replace(/\s*가사\s*$/i, '')    // Remove Korean 가사 (lyrics)
       .replace(/\s*歌詞\s*$/i, '')    // Remove Japanese 歌詞 (lyrics)
-      .replace(/^["'`]+|["'`]+$/g, '') // Remove quotes at start/end
+      .replace(/\s*เนื้อเพลง\s*$/i, '') // Remove Thai เนื้อเพลง (lyrics)
       .replace(/\s*["'`]\s*/g, ' ')   // Remove quotes and normalize spaces
+      .replace(/"/g, '')              // Remove all double quotes
+      .replace(/'/g, '')              // Remove all single quotes
+      .replace(/`/g, '')              // Remove all backticks
+      .replace(/\s+/g, ' ')           // Normalize spaces
       .trim();
+
+    if (title.toLowerCase().includes('butter')) {
+      console.log(`🧈 BUTTER DEBUG - after first cleaning:`, cleaned);
+    }
+
+    // Pattern matching for different title formats
     
-    // Try different patterns to extract JUST the song name
-    
-    // Pattern 1: "Artist - Song" → extract "Song"
+    // "Artist - Song" → extract "Song"
     const dashMatch = cleaned.match(/^([^-]+)\s*-\s*(.+)$/);
-    if (dashMatch && dashMatch[2].trim().length > 0) {
-      let songPart = dashMatch[2].trim()
-        .replace(/\s*Lyrics?.*$/i, '') // Remove Lyrics from song part
-        .replace(/\s*Lyric.*$/i, '')   // Remove Lyric from song part
-        .replace(/\s*by\s+.+$/i, '')   // Remove "by Artist"
-        .replace(/^["'`]+|["'`]+$/g, '') // Remove quotes at start/end
-        .trim();
-      
+    if (dashMatch && dashMatch[2].trim().length >= 2) {
+      const songPart = dashMatch[2].trim().replace(/^["'`]+|["'`]+$/g, '').trim();
       if (songPart.length >= 2 && !/^(official|video|mv|music|lyrics?|lyric)$/i.test(songPart)) {
         return songPart;
       }
     }
-    
-    // Pattern 2: "Song by Artist" → extract "Song"
-    const byMatch = cleaned.match(/^(.+?)\s+by\s+([^-]+)$/i);
-    if (byMatch && byMatch[1].trim().length > 0) {
-      const songPart = byMatch[1].trim()
-        .replace(/^["'`]+|["'`]+$/g, '') // Remove quotes
-        .trim();
-      if (songPart.length >= 2) {
-        return songPart;
-      }
-    }
-    
-    // Pattern 3: "Song (Artist)" → extract "Song"
+
+    // "Song (Artist)" → extract "Song" - but be careful with Korean parentheses
     const parenthesesMatch = cleaned.match(/^(.+?)\s*\(\s*([^)]+)\s*\)$/);
-    if (parenthesesMatch && parenthesesMatch[1].trim().length > 0) {
-      const songPart = parenthesesMatch[1].trim()
-        .replace(/^["'`]+|["'`]+$/g, '') // Remove quotes
-        .trim();
-      // Check if what's in parentheses looks like an artist name
-      const artistPart = parenthesesMatch[2].trim();
-      if (songPart.length >= 2 && artistPart.length >= 2) {
+    if (parenthesesMatch && parenthesesMatch[1].trim().length >= 2) {
+      const songPart = parenthesesMatch[1].trim().replace(/^["'`]+|["'`]+$/g, '').trim();
+      const parentPart = parenthesesMatch[2].trim();
+      
+      // If parentheses contain Korean/other language version, prefer the main part
+      if (/^[가-힣\u0E00-\u0E7F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+/.test(parentPart)) {
         return songPart;
       }
+      
+      // If parentheses contain English and main part is non-English, prefer parentheses
+      if (/^[a-zA-Z\s&]+$/.test(parentPart) && !/^[a-zA-Z]/.test(songPart)) {
+        return parentPart;
+      }
+      
+      return songPart;
     }
-    
-    // Pattern 4: Remove common artist patterns from the beginning (including variants)
+
+    // Remove artist names from beginning (simplified list)
     const cleanedFromArtist = cleaned
-      .replace(/^(BTS|BLACKPINK|IU|TWICE|Red Velvet|aespa|NewJeans|IVE|ITZY|SEVENTEEN|Stray Kids|ENHYPEN|TXT|NMIXX|LE SSERAFIM|GIDLE|ATEEZ|NCT|SuperM|EXO|SNSD|Girls Generation|f\(x\)|SHINee|BIGBANG|2NE1|Wonder Girls|Kara|T-ara|SISTAR|miss A|AOA|MAMAMOO|GFRIEND|Oh My Girl|LOONA|WJSN|fromis_9|IZONE|Wanna One|IOI|X1|Produce|KARA|4Minute|Secret|Rainbow|After School|Brown Eyed Girls|Davichi|Jewelry|S\.E\.S|Fin\.K\.L|Baby V\.O\.X)\s*[-:]?\s*/i, '')
-      .replace(/^(.*?Kpop.*?Demon.*?Hunters?|.*?K-?pop.*?Demon.*?Hunters?|TakedownKPop.*?Demon.*?Hunters?|Your.*?IdolKPop.*?Demon.*?Hunters?)\s*[-:]?\s*/i, '') // Remove various Demon Hunters variants
+      .replace(/^(BTS|BLACKPINK|IU|TWICE|Red Velvet|aespa|NewJeans|IVE|ITZY|SEVENTEEN|Stray Kids|ENHYPEN|TXT|NMIXX|LE SSERAFIM|GIDLE|ATEEZ|NCT|EXO|SNSD|Girls Generation|SHINee|BIGBANG|방탄소년단|블랙핑크|아이유|트와이스|레드벨벳|에스파|뉴진스|아이브|있지|세븐틴|스트레이키즈|엔하이픈|투모로우바이투게더|엔믹스|르세라핌|아이들|에이티즈|엔시티|엑소|소녀시대|샤이니|빅뱅)\s*[-:]?\s*/i, '')
       .replace(/^["'`]+|["'`]+$/g, '') // Remove quotes at start/end
       .trim();
-    
+
     if (cleanedFromArtist.length >= 2 && cleanedFromArtist !== cleaned) {
       return cleanedFromArtist;
     }
+
+    // Final cleanup
+    let finalClean = cleaned
+      .replace(/^["'`]+|["'`]+$/g, '')  // Remove quotes at start/end
+      .replace(/["'"'""''`]/g, '')      // Remove all Unicode quotes
+      .trim();
+
+    // Prefer English over other languages if mixed
+    const englishMatch = finalClean.match(/^([a-zA-Z][a-zA-Z\s&]*[a-zA-Z]|[a-zA-Z]{2,})/);
+    if (englishMatch && englishMatch[1].trim().length >= 2) {
+      const englishPart = englishMatch[1].trim();
+      // Make sure it's not just common words
+      if (!/^(the|and|or|of|in|on|at|to|for|with|by|official|video|audio|music|mv)$/i.test(englishPart)) {
+        return englishPart;
+      }
+    }
+
+    // Return cleaned result if valid, otherwise original
+    const result = finalClean.length >= 2 ? finalClean : title.trim();
     
-    // Final quote cleanup
-    const finalClean = cleaned.replace(/^["'`]+|["'`]+$/g, '').trim();
+    if (title.toLowerCase().includes('butter')) {
+      console.log(`🧈 BUTTER DEBUG - cleanTitle result:`, {
+        input: title,
+        output: result,
+        steps: {
+          afterFirstCleaning: cleaned,
+          afterFinalClean: finalClean,
+          englishMatch: englishMatch?.[1]
+        }
+      });
+    }
     
-    return finalClean;
+    return result;
   }
 
   /**
@@ -328,55 +444,93 @@ export class YouTubePlaylistService {
   /**
    * 🎤 Extract artist from title or channel
    */
-  private extractArtist(title: string, channelTitle: string): string {
-    // Clean the title first
-    const cleanedTitle = title
-      .replace(/\s*\[.*?\]\s*/g, '') // Remove [brackets]
-      .replace(/\s*\(.*?\)\s*/g, '') // Remove (parentheses)  
-      .replace(/\s*\|.*$/g, '')      // Remove | and everything after
-      .replace(/\s*-\s*Official.*$/i, '') // Remove "- Official Video" etc.
-      .replace(/\s*MV\s*/i, '')      // Remove MV
-      .trim();
+  private extractArtist(title: string, channelTitle: string, category: string = 'kpop'): string {
+    // Clean title first to use for mapping lookup
+    const cleanedTitle = this.cleanTitle(title);
     
-    // Try to extract artist from title pattern "Artist - Song"
-    const dashMatch = cleanedTitle.match(/^([^-]+)\s*-\s*(.+)$/);
-    if (dashMatch && dashMatch[1].trim().length > 0 && dashMatch[2].trim().length > 0) {
-      const artist = dashMatch[1].trim();
-      // Make sure it's not just numbers or weird characters
-      if (artist.length >= 2 && /[a-zA-Z]/.test(artist)) {
-        return artist;
+    // Debug logging for Butter case
+    if (title.toLowerCase().includes('butter')) {
+      console.log(`🧈 BUTTER DEBUG - extractArtist called:`, {
+        originalTitle: title,
+        cleanedTitle: cleanedTitle,
+        category: category
+      });
+    }
+    
+    // 1. Check mapping file first (highest priority)
+    const mappedArtist = findArtistByTitle(category, cleanedTitle);
+    if (mappedArtist) {
+      if (title.toLowerCase().includes('butter')) {
+        console.log(`🧈 BUTTER DEBUG - Found in mapping file:`, mappedArtist);
+      }
+      return mappedArtist;
+    }
+    
+    if (title.toLowerCase().includes('butter')) {
+      console.log(`🧈 BUTTER DEBUG - NOT found in mapping file, trying hardcoded...`);
+    }
+    
+    // 2. Fallback to hardcoded mappings (for backwards compatibility)
+    // REMOVED: Hardcoded mappings are dangerous due to false positives
+    // (e.g., "tt" in "butter" causing TWICE instead of BTS)
+    // Use mapping file system instead for accuracy
+
+    if (title.toLowerCase().includes('butter')) {
+      console.log(`🧈 BUTTER DEBUG - Skipping hardcoded mappings, going to pattern extraction...`);
+    }
+
+    // ถ้าไม่เจอใน mapping ลองสกัดจาก pattern "Artist - Song" (ก่อน clean มากเกินไป)
+    const directDashMatch = title.match(/^([^-]+)\s*-\s*(.+)$/);
+    if (directDashMatch && directDashMatch[1].trim().length >= 2 && directDashMatch[2].trim().length >= 2) {
+      const possibleArtist = directDashMatch[1].trim()
+        .replace(/\s*(Official|VEVO|Records?|Music|Entertainment)\s*/gi, '')
+        .trim();
+      
+      // เช็คว่าไม่ใช่คำที่ไม่เกี่ยวข้อง และต้องเป็นชื่อศิลปินที่สมเหตุสมผล
+      if (!/^(official|video|audio|music|lyrics?|lyric|mv|live|performance|cover|the|and|or|but)$/i.test(possibleArtist) && 
+          possibleArtist.length <= 50) { // ป้องกันชื่อยาวเกินไป
+        
+        // เพิ่มการตรวจสอบว่าเป็นชื่อศิลปินที่น่าจะถูกต้อง
+        const hasValidChars = /^[a-zA-Z0-9\s\u3131-\u318F\uAC00-\uD7A3\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF&'-()]+$/.test(possibleArtist);
+        if (hasValidChars) {
+          console.log(`🎯 Found artist from title pattern: "${possibleArtist}" from "${title}"`);
+          return possibleArtist;
+        }
       }
     }
-    
-    // Try pattern "Song by Artist"
-    const byMatch = cleanedTitle.match(/(.+)\s+by\s+([^-]+)$/i);
-    if (byMatch && byMatch[2].trim().length > 0) {
-      return byMatch[2].trim();
-    }
-    
-    // Clean up channel title as fallback
-    const cleanedChannel = channelTitle
-      .replace(/\s*(Official|OFFICIAL|Channel|VEVO|Records?|Music|Entertainment|Production)\s*/gi, '')
-      .replace(/\s*-.*$/g, '') // Remove everything after dash
+
+    // ถ้าไม่เจอใน pattern ง่ายๆ ลองสกัดจาก originalTitle ที่ clean แล้ว
+    const originalTitle = title
+      .replace(/\s*\[.*?\]\s*/g, '') 
+      .replace(/\s*\(.*?\)\s*/g, '')
+      .replace(/\s*\|.*$/g, '')
       .trim();
-    
-    // If channel is too generic or empty, try to guess from title
-    if (cleanedChannel.length < 2 || 
-        /^(various|music|songs|hits|playlist|compilation)$/i.test(cleanedChannel)) {
       
-      // Try to extract any capitalized words from title as artist
-      const words = cleanedTitle.split(/[\s-]+/).filter(word => 
+    const dashMatch = originalTitle.match(/^([^-]+)\s*-\s*(.+)$/);
+    if (dashMatch && dashMatch[1].trim().length >= 2 && dashMatch[2].trim().length >= 2) {
+      const possibleArtist = dashMatch[1].trim()
+        .replace(/\s*(Official|VEVO|Records?|Music|Entertainment)\s*/gi, '')
+        .trim();
+      
+      // เช็คว่าไม่ใช่คำที่ไม่เกี่ยวข้อง
+      if (!/^(official|video|audio|music|lyrics?|lyric|mv|live|performance|cover)$/i.test(possibleArtist)) {
+        return possibleArtist;
+      }
+    }
+
+    // สุดท้าย ถ้าหาไม่เจอ ใช้คำแรกที่มีความหมาย
+    const words = originalTitle
+      .split(/[\s-_]+/)
+      .filter(word => 
         word.length >= 2 && 
-        word[0] === word[0].toUpperCase() &&
-        !/^(the|and|or|but|in|on|at|to|for|of|with|by)$/i.test(word)
+        !/^(official|video|mv|music|lyrics?|lyric|audio|the|and|or|but|in|on|at|to|for|of|with|by|ft|feat)$/i.test(word)
       );
-      
-      if (words.length > 0) {
-        return words.slice(0, 2).join(' '); // Take first 1-2 words
-      }
+    
+    if (words.length >= 1) {
+      return words[0];
     }
     
-    return cleanedChannel || 'Unknown Artist';
+    return 'Unknown Artist';
   }
 
   /**
