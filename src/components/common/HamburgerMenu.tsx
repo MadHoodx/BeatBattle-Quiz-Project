@@ -159,7 +159,7 @@ export default function HamburgerMenu({ open, setOpen }: { open: boolean; setOpe
                 </div>
               </div>
               <div className="mt-12 px-5 pb-8">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-white/35 font-semibold mb-3">Info</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/35 font-semibold mb-3">{t('info')}</p>
                 <div className="flex flex-wrap gap-3 text-[11px] text-white/40">
                   <LangLink href="/about" onClick={() => setOpen(false)} className="hover:text-white/70 transition">{t('about')}</LangLink>
                   <LangLink href="/howto" onClick={() => setOpen(false)} className="hover:text-white/70 transition">{t('howto')}</LangLink>

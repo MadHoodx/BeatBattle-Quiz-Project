@@ -38,6 +38,10 @@ export interface Song {
   startTime?: number;
   endTime?: number;
   isLyricsVideo?: boolean;
+  // Diagnostic flags
+  isAgeRestricted?: boolean;
+  embeddable?: boolean;
+  regionBlocked?: boolean;
 }
 
 export interface PlaylistResponse {
@@ -249,7 +253,11 @@ export class YouTubePlaylistService {
             position: fetchedCount + index + 1,
             startTime: timing.startTime,
             endTime: timing.endTime,
-            isLyricsVideo
+            isLyricsVideo,
+            // default diagnostic values; will be merged with video details later
+            isAgeRestricted: false,
+            embeddable: true,
+            regionBlocked: false
           };
         });
         
@@ -263,12 +271,64 @@ export class YouTubePlaylistService {
         }
       }
       
-      return allSongs;
+  // Enrich collected songs with video details (age restriction, embeddable, region)
+  const enriched = await this.enrichWithVideoDetails(allSongs);
+  return enriched;
       
     } catch (error) {
       console.error(`Error fetching playlist ${playlistId}:`, error);
       return [];
     }
+  }
+
+  /**
+   * Merge video details (contentDetails/status/player) into Song list to expose
+   * age-restriction / embeddable / region-blocking diagnostics.
+   */
+  private async enrichWithVideoDetails(songs: Song[]): Promise<Song[]> {
+    if (!this.apiKey || songs.length === 0) return songs;
+
+    try {
+      // Process in chunks (max 50 ids per request)
+      const chunkSize = 50;
+      for (let i = 0; i < songs.length; i += chunkSize) {
+        const chunk = songs.slice(i, i + chunkSize);
+        const ids = chunk.map(s => s.videoId).join(',');
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,status,player&id=${ids}&key=${this.apiKey}`;
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          console.warn(`YouTube videos API returned ${resp.status} while enriching video details`);
+          continue;
+        }
+        const data = await resp.json();
+        if (!data.items) continue;
+        const map = new Map<string, any>(data.items.map((it: any) => [it.id, it]));
+
+        for (const s of chunk) {
+          const det = map.get(s.videoId);
+          if (!det) continue;
+
+          // age restriction: ytRating === 'ytAgeRestricted' is common indicator
+          const ageRestricted = !!(det.contentDetails && det.contentDetails.contentRating && (det.contentDetails.contentRating.ytRating === 'ytAgeRestricted' || det.contentDetails.contentRating.ytRating === 'ytAgeRestricted'));
+
+          // embeddable: status.embeddable === true
+          const embeddable = det.status && typeof det.status.embeddable === 'boolean' ? !!det.status.embeddable : true;
+
+          // regionBlocked: contentDetails.regionRestriction exists and has blocked list
+          const regionBlocked = !!(det.contentDetails && det.contentDetails.regionRestriction && (det.contentDetails.regionRestriction.blocked || det.contentDetails.regionRestriction.allowed));
+
+          s.isAgeRestricted = ageRestricted;
+          s.embeddable = embeddable;
+          s.regionBlocked = regionBlocked;
+
+          // prefer duration from contentDetails if available
+          if (det.contentDetails && det.contentDetails.duration) s.duration = det.contentDetails.duration;
+        }
+      }
+    } catch (err) {
+      console.error('Error enriching video details:', err);
+    }
+    return songs;
   }
 
   /**

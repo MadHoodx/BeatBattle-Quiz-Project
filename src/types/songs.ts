@@ -147,14 +147,14 @@ export interface SyncPlaylistResponse {
  */
 export const CATEGORY_CONFIG = {
   kpop: {
-    label: 'K-Pop',
+    label: 'K-Pop', 
     emoji: '🇰🇷',
     description: 'Korean Pop Music'
   },
   jpop: {
-    label: 'J-Pop', 
+    label: 'Anime', 
     emoji: '🇯🇵',
-    description: 'Japanese Pop Music'
+    description: 'Anime songs & theme music from popular series'
   },
   thaipop: {
     label: 'Thai Pop',
@@ -162,9 +162,9 @@ export const CATEGORY_CONFIG = {
     description: 'Thai Pop Music'
   },
   pophits: {
-    label: 'Pop Hits',
+    label: 'Western',
     emoji: '🎵',
-    description: 'International Pop Hits'
+    description: 'Western pop and chart hits'
   },
   kdramaost: {
     label: 'K-Drama OST',

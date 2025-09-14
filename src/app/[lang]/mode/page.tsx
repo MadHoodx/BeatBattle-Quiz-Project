@@ -60,10 +60,10 @@ export default function ModePage() {
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setSoloDifficulty(d); }}
                         className={`px-3 py-1 text-[11px] font-bold tracking-wider uppercase rounded-full transition ${(soloDifficulty===d)?'bg-fuchsia-500/40 text-white shadow-inner':'text-white/60 hover:text-white/80'}`}
-                      >{d}</button>
+                      >{t(d)}</button>
                     ))}
                   </div>
-                  <span className="text-xs text-white/40 font-medium">solo</span>
+                  <span className="text-xs text-white/40 font-medium">{t('solo')}</span>
                 </div>
                 <div className="w-full flex items-center justify-center mb-6">
                   <img src="/Solo.png" alt="Solo" className="h-40 md:h-48 w-auto object-contain drop-shadow-[0_4px_18px_rgba(255,255,255,0.08)] transition-transform duration-500 group-hover:scale-110" />
@@ -72,7 +72,7 @@ export default function ModePage() {
                   {t('solo')}
                 </h2>
                 <p className="text-sm md:text-base leading-relaxed text-white/70 pr-2">
-                  {soloDifficulty==='hardcore' ? '2s clip challenge – zero mercy.' : t('play_kdrama_ost')}
+                  {soloDifficulty==='hardcore' ? t('solo_hardcore_desc') : t('solo_casual_desc')}
                 </p>
               </div>
               <div className="mt-8 pt-4 flex items-center justify-between text-xs text-white/40 border-t border-white/10">

@@ -18,6 +18,8 @@ export default function AudioVisualizer({
   startTime = 0 
 }: AudioVisualizerProps) {
   const [currentTime, setCurrentTime] = useState(0);
+  const [startedPlaying, setStartedPlaying] = useState(false);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [audioData, setAudioData] = useState<number[]>(new Array(60).fill(0));
   const audioRef = useRef<HTMLAudioElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,8 +58,9 @@ export default function AudioVisualizer({
   }, [isPlaying, currentTime]);
 
   // Timer management
+  // Start ticking only after the player actually begins playback
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || !startedPlaying) return;
 
     const timer = setInterval(() => {
       setCurrentTime(prev => {
@@ -71,12 +74,45 @@ export default function AudioVisualizer({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isPlaying, duration, onTimeUp]);
+  }, [isPlaying, startedPlaying, duration, onTimeUp]);
 
   useEffect(() => {
     if (!isPlaying) {
       setCurrentTime(0);
     }
+  }, [isPlaying]);
+
+  // When playback starts, reset and mark startedPlaying
+  const handlePlaying = () => {
+    setStartedPlaying(true);
+    setCurrentTime(0);
+  };
+
+  // Fallback: if onPlaying doesn't arrive within ~900ms, start anyway to avoid long perceived delay
+  useEffect(() => {
+    if (!isPlaying) {
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+      setStartedPlaying(false);
+      return;
+    }
+
+    // set fallback only when user requested play
+    if (!startedPlaying) {
+      fallbackTimeoutRef.current = setTimeout(() => {
+        setStartedPlaying(true);
+        setCurrentTime(0);
+      }, 900);
+    }
+
+    return () => {
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+    };
   }, [isPlaying]);
 
   const progress = (currentTime / duration) * 100;
@@ -278,6 +314,8 @@ export default function AudioVisualizer({
           endTime={startTime + duration}
           isPlaying={isPlaying}
           onEnded={onTimeUp}
+          onPlaying={handlePlaying}
+          preload={true}
         />
       )}
     </div>

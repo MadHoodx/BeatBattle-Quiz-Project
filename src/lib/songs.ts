@@ -40,7 +40,12 @@ function tableForCategory(category?: string) {
     case 'kpop': return 'songs_kpop';
     case 'jpop': return 'songs_jpop';
     case 'thaipop': return 'songs_thaipop';
+    // common alias sent from some playlist sources
+    case 'thai': return 'songs_thaipop';
     case 'pophits': return 'songs_pophits';
+  // common aliases for pop/western playlists
+  case 'western': return 'songs_pophits';
+  case 'pop': return 'songs_pophits';
     case 'kdramaost': return 'songs_kdramaost';
     // common alias sent from some playlist sources
     case 'kdrama': return 'songs_kdramaost';
@@ -53,6 +58,12 @@ function normalizeCategory(category?: string): SongCategory | undefined {
   if (!category) return undefined;
   const c = category.toString();
   if (c === 'kdrama') return 'kdramaost';
+  // Accept 'thai' as an alias for 'thaipop'
+  if (c === 'thai') return 'thaipop';
+  // Accept common aliases for pop/western
+  if (c === 'western' || c === 'pop') return 'pophits';
+  if (c === 'western') return 'pophits';
+
   // Only return valid categories
   if (isValidCategory(c as SongCategory)) return c as SongCategory;
   return undefined;

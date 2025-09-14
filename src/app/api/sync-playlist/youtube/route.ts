@@ -19,6 +19,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No songs found from YouTube' }, { status: 404 });
     }
 
+    // If caller wants a report only, return the fetched YouTube songs (with diagnostics)
+    const { reportOnly = false } = body;
+    if (reportOnly) {
+      // Return a compact list including diagnostic flags
+      const report = ytResult.songs.map((s: any) => ({ videoId: s.videoId, title: s.title, artist: s.artist, isAgeRestricted: s.isAgeRestricted, embeddable: s.embeddable, regionBlocked: s.regionBlocked }));
+      return NextResponse.json({ success: true, report, total: report.length });
+    }
+
     await Promise.all(ytResult.songs.map(ytSong =>
       upsertSongFromPlaylistItem({
         source_id: ytSong.videoId,

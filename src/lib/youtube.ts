@@ -9,7 +9,7 @@ const youtube = google.youtube({
 export const musicCategories = {
   kpop: {
     name: "K-Pop",
-    emoji: "🇰🇷",
+    description: "Korean pop music",
     searchTerms: [
       "BTS songs",
       "BLACKPINK hits", 
@@ -20,7 +20,7 @@ export const musicCategories = {
     ]
   },
   jpop: {
-    name: "J-Pop",
+    name: "Anime",
     emoji: "🇯🇵", 
     searchTerms: [
       "YOASOBI songs",

@@ -5,6 +5,7 @@ import HamburgerMenu from "@/components/common/HamburgerMenu";
 import Avatar from "@/components/common/Avatar";
 import LogoHomeButton from "@/components/common/LogoHomeButton";
 import LangLink from "@/components/common/LangLink";
+import { useI18n } from '@/context/I18nContext';
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -31,9 +32,9 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="flex-1" />
             <nav className="relative z-10 hidden md:flex items-center gap-6 text-sm font-medium text-white/70">
-              <InlineLink href="/mode" label="Modes" />
-              <InlineLink href="/category" label="Categories" />
-              <InlineLink href="/leaderboard" label="Leaderboard" />
+              <InlineLink href="/mode" labelKey="modes" />
+              <InlineLink href="/category" labelKey="categories" />
+              <InlineLink href="/leaderboard" labelKey="leaderboard" />
             </nav>
             <div className="relative z-10 flex items-center gap-3">
               <Avatar />
@@ -49,13 +50,15 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function InlineLink({ href, label }: { href: string; label: string }) {
+function InlineLink({ href, label, labelKey }: { href: string; label?: string; labelKey?: string }) {
+  const { t } = useI18n();
+  const text = labelKey ? t(labelKey) : (label || '');
   return (
     <LangLink
       href={href}
       className="relative px-2 py-1 hover:text-white transition before:absolute before:inset-x-0 before:bottom-0 before:h-px before:scale-x-0 hover:before:scale-x-100 before:origin-left before:bg-gradient-to-r before:from-fuchsia-400 before:via-pink-400 before:to-violet-400 before:transition-transform"
     >
-      {label}
+      {text}
     </LangLink>
   );
 }

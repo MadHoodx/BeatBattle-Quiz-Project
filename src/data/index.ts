@@ -44,9 +44,9 @@ export interface DataSourceInfo {
 // 🎯 Category definitions - now supports dynamic playlists
 export const CATEGORIES = {
   kpop: 'K-Pop',
-  jpop: 'J-Pop', 
+  jpop: 'Anime', 
   thai: 'Thai Pop',
-  western: 'Pop Hits',
+  western: 'Western',
   kdrama: 'K-Drama OST',
   // Removed 'rock' category due to errors; add it back only when playlists and mappings are ready
 } as const;

@@ -9,9 +9,9 @@
 export const PLAYLIST_IDS = {
   kpop: 'PLxQODuHe4E5MPk6anBwqCgyfIa00KhK0c',    // K-Pop playlist
   kdrama: 'PLxQODuHe4E5P729r8-TFG61BvI64eMF6G',   // K-Drama OST playlist
-  thai: 'PLpPEyOdwLH3cpKWxfSDcHP5WKK534GIfb',     // Thai Pop playlist
-  jpop: 'PLj3yHoINc17ve9DMQpyU_clEGETrKSrbD',     // J-Pop playlist
-  western: 'PLplXQ2cg9B_qrCVd1J_iId5SvP8Kf_BfS',  // Western Pop playlist
+  thai: 'PLxQODuHe4E5MIS6yCgOnVJOMYuscu6ufS',     // Thai Pop playlist
+  jpop: 'PLxQODuHe4E5MZfeyQfqo1DS75wCiv07V3',     // J-Pop playlist
+  western: 'PLxQODuHe4E5Mo6cHHj1GO-IQAA2Mz_NE7',  // Western Pop playlist
 };
 
 
@@ -37,9 +37,9 @@ export const CATEGORY_INFO = {
     description: "Thai Pop Music"
   },
   jpop: {
-    name: "J-Pop",
+    name: "Anime",
     emoji: "🇯🇵",
-    description: "Japanese Pop Music"
+    description: "Anime songs & theme music"
   },
   western: {
     name: "Western Pop",

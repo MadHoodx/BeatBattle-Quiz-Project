@@ -50,7 +50,7 @@ function SecondaryCta({ onClick, label }: CtaProps) {
   );
 }
 
-function HardcoreCta({ onClick }: CtaProps) {
+function HardcoreCta({ onClick, label }: CtaProps) {
   return (
     <button
       onClick={onClick}
@@ -60,7 +60,7 @@ function HardcoreCta({ onClick }: CtaProps) {
       <span className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.35),transparent_65%)] opacity-0 group-hover:opacity-100 transition duration-500" />
       <span className="relative flex items-center gap-2">
         <span className="inline-flex h-5 w-5 items-center justify-center text-[#2d2244]">🔥</span>
-        Hardcore
+        {label}
       </span>
       <span className="pointer-events-none absolute -inset-px rounded-2xl border border-white/20" />
     </button>
@@ -88,9 +88,9 @@ export function Hero({ onPrimary, onSecondary, onTertiary, showAltCta, loggedIn,
         {t('hero_desc')}
       </p>
   <div className="mt-10 flex flex-col sm:flex-row gap-5 w-full max-w-3xl justify-center animate-[fadeIn_1.3s_ease] px-4">
-        <PrimaryCta onClick={onPrimary} label={loggedIn ? t('Play now') : t('login_signup')} />
+        <PrimaryCta onClick={onPrimary} label={loggedIn ? t('playnow') : t('login_signup')} />
         <SecondaryCta onClick={onSecondary} label={loggedIn ? t('battle_friend') : t('play_as_guest')} />
-        {showAltCta && <HardcoreCta onClick={onTertiary} />}
+        {showAltCta && <HardcoreCta onClick={onTertiary} label={t('hardcore')} />}
       </div>
   {children && <div className="mt-14 w-full max-w-[1400px] px-4 animate-[fadeIn_1.4s_ease]">{children}</div>}
       <style jsx global>{`

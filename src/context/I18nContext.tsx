@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 export type I18nContextType = {
   lang: string;
   setLang: (lang: string) => void;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
   availableLangs: string[];
 };
 
@@ -94,7 +94,16 @@ export function I18nProvider({ lang: propLang, children }: { lang?: string; chil
     setLangState(newLang);
   };
 
-  const t = (key: string) => messages[key] || key;
+  const t = (key: string, vars?: Record<string, string | number>) => {
+    let str = messages[key] || key;
+    if (vars && typeof str === 'string') {
+      for (const k of Object.keys(vars)) {
+        const re = new RegExp(`{{\\s*${k}\\s*}}`, 'g');
+        str = str.replace(re, String(vars[k]));
+      }
+    }
+    return str;
+  };
 
   return (
     <I18nContext.Provider value={{ lang, setLang, t, availableLangs }}>

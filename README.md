@@ -12,5 +12,5 @@ This project uses a **Supabase-backed song override system** that completely eli
 - 🎨 **Modern UI**: Next.js 15 with Tailwind CSS
 - 🌐 **Multi-language**: Support for multiple languages
 - 📱 **Responsive**: Works on all devices
-- 🎵 **5 Categories**: K-Pop, J-Pop, Thai Pop, Pop Hits, K-Drama OST
++ 🎵 **5 Categories**: K-Pop, Anime, Thai Pop, Pop Hits, K-Drama OST
 

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useI18n } from '@/context/I18nContext';
 import ChoiceButton from "@/components/quiz/ChoiceButton";
 import LegalDisclaimer from "@/components/common/LegalDisclaimer";
 
@@ -51,6 +52,7 @@ function Atmosphere() {
 }
 
 export default function QuizPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -596,8 +598,8 @@ export default function QuizPage() {
         <div className="mx-auto mb-6 h-20 w-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-fuchsia-400/30 border-t-fuchsia-400" />
         </div>
-        <h2 className="text-xl font-semibold tracking-wide mb-2">Loading {category.toUpperCase()} Quiz…</h2>
-        <p className="text-white/50 text-sm uppercase tracking-widest">Difficulty: {difficulty}</p>
+        <h2 className="text-xl font-semibold tracking-wide mb-2">{t('loading_quiz', { category: category.toUpperCase() })}</h2>
+        <p className="text-white/50 text-sm uppercase tracking-widest">{t('difficulty_label', { difficulty })}</p>
       </div>
     </main>
   );
@@ -612,7 +614,7 @@ export default function QuizPage() {
             <p className="text-white/60 text-sm mb-6 leading-relaxed">{error}</p>
             <div className="space-y-3">
               <button onClick={goToCategory} className="w-full group relative overflow-hidden rounded-xl px-5 py-3 font-semibold bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-[#18152e] tracking-wide shadow-lg shadow-fuchsia-500/30 hover:shadow-pink-500/40 transition">
-                <span className="relative z-10">← Back to Categories</span>
+                <span className="relative z-10">{t('back_to_categories')}</span>
               </button>
               <button onClick={goHome} className="w-full rounded-xl px-5 py-3 font-semibold bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur text-white/90 hover:text-white transition" >🏠 Home</button>
             </div>
@@ -627,9 +629,9 @@ export default function QuizPage() {
         <Atmosphere />
         <div className="relative z-10 max-w-md mx-auto p-8 rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-400/15 via-yellow-500/10 to-transparent backdrop-blur-xl shadow-[0_10px_40px_-5px_rgba(0,0,0,0.6)] animate-[fadeIn_.6s_ease] text-center">
           <h2 className="text-2xl font-extrabold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent mb-3">⚠️ No Questions</h2>
-          <p className="text-white/60 text-sm leading-relaxed mb-6">Could not generate quiz for <span className="font-semibold text-white/80">{category}</span> category.</p>
+          <p className="text-white/60 text-sm leading-relaxed mb-6">{t('no_questions_for_category', { category })}</p>
           <button onClick={goToCategory} className="w-full group relative overflow-hidden rounded-xl px-5 py-3 font-semibold bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-[#18152e] tracking-wide shadow-lg shadow-fuchsia-500/30 hover:shadow-pink-500/40 transition">
-            <span className="relative z-10">← Try Another Category</span>
+            <span className="relative z-10">{t('try_another_category')}</span>
           </button>
         </div>
       </main>
@@ -672,10 +674,10 @@ export default function QuizPage() {
         <div className="relative z-10 w-full max-w-4xl mx-auto px-4">
           
           {/* Glassmorphism Result Card */}
-          <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] animate-[cardSheen_2s_ease-in-out_infinite,fadeIn_.8s_ease]">
+          <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] animate-[fadeIn_.8s_ease]">
             
-            {/* Animated border glow */}
-            <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-r from-fuchsia-500/20 via-pink-500/20 to-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            {/* Animated border glow (sheen only) */}
+            <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-r from-fuchsia-500/20 via-pink-500/20 to-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-[cardSheen_2s_ease-in-out_infinite]" />
             <div className="absolute inset-[1px] rounded-[2.4rem] bg-gradient-to-br from-[#070a18]/95 via-[#0d1425]/90 to-[#070a18]/95 backdrop-blur-xl" />
             
             <div className="relative p-8 md:p-12">
@@ -687,7 +689,7 @@ export default function QuizPage() {
                 </div>
                 
                 <h1 className="text-5xl md:text-6xl font-black tracking-tight bg-gradient-to-r from-white via-fuchsia-200 to-amber-200 bg-clip-text text-transparent drop-shadow-lg animate-[fadeIn_1s_ease_.3s_both]">
-                  Quiz Complete!
+                  {t('quiz_complete')}
                 </h1>
                 
                 <div className="flex items-center justify-center gap-3 text-lg font-semibold text-white/70 animate-[fadeIn_1s_ease_.5s_both]">
@@ -699,7 +701,7 @@ export default function QuizPage() {
 
               {/* Epic Score Display - New Time-Based System */}
               <div className="text-center mb-12 p-8 rounded-3xl bg-gradient-to-br from-white/5 via-transparent to-white/5 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] animate-[fadeIn_1s_ease_.7s_both]">
-                <p className="text-white/50 text-sm uppercase tracking-[0.3em] mb-4 font-bold">YOUR TOTAL SCORE</p>
+                <p className="text-white/50 text-sm uppercase tracking-[0.3em] mb-4 font-bold">{t('your_total_score')}</p>
                 
                 {/* Animated Score Counter */}
                 <div className="relative mb-6">
@@ -747,7 +749,7 @@ export default function QuizPage() {
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400/20 to-cyan-400/20 border border-blue-400/30 flex items-center justify-center">
                       <span className="text-xl">⏱️</span>
                     </div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-blue-200 transition-colors">Time Statistics</h3>
+                    <h3 className="text-lg font-bold text-white group-hover:text-blue-200 transition-colors">{t('time_statistics')}</h3>
                   </div>
                   
                   <div className="space-y-3">
@@ -776,7 +778,7 @@ export default function QuizPage() {
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-green-400/20 border border-emerald-400/30 flex items-center justify-center">
                       <span className="text-xl">🎯</span>
                     </div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-emerald-200 transition-colors">Answer Breakdown</h3>
+                    <h3 className="text-lg font-bold text-white group-hover:text-emerald-200 transition-colors">{t('answer_breakdown')}</h3>
                   </div>
                   
                   <div className="space-y-3">
@@ -810,28 +812,16 @@ export default function QuizPage() {
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${performance.color.replace('from-', 'from-').replace('via-', 'to-').split(' ')[0]}/20 ${performance.color.replace('from-', 'to-').replace('via-', 'from-').split(' ')[2]}/20 border border-yellow-400/30 flex items-center justify-center`}>
                       <span className="text-xl">{performance.emoji}</span>
                     </div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-yellow-200 transition-colors">Performance Rating</h3>
+                    <h3 className="text-lg font-bold text-white group-hover:text-yellow-200 transition-colors">{t('performance_rating')}</h3>
                   </div>
                   
                   <div className="text-center">
                     <div className={`text-2xl font-black bg-gradient-to-r ${performance.color} bg-clip-text text-transparent mb-2`}>
                       {performance.title}
                     </div>
-                    <div className={`text-xl font-bold bg-gradient-to-r ${performance.color} bg-clip-text text-transparent mb-3`}>
-                      {performance.rank}
-                    </div>
-                    
-                    {/* Rating stars */}
-                    <div className="flex justify-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <span 
-                          key={i} 
-                          className={`text-lg ${i < Math.ceil(accuracy / 20) ? 'text-yellow-400' : 'text-white/20'} transition-colors duration-300`}
-                          style={{ animationDelay: `${i * 0.1}s` }}
-                        >
-                          ⭐
-                        </span>
-                      ))}
+                    <div className="text-white/60 mb-3">
+                      <div className="text-sm">{t('correct_count_label')}</div>
+                      <div className="text-2xl font-bold">{quiz.correctAnswers} / {quiz.questions.length}</div>
                     </div>
                   </div>
                 </div>
@@ -847,11 +837,11 @@ export default function QuizPage() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                  <span className="relative z-10 flex items-center justify-center gap-3 text-lg">
+                    <span className="relative z-10 flex items-center justify-center gap-3 text-lg">
                     <svg className="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    PLAY AGAIN
+                    {t('play_again')}
                   </span>
                 </button>
                 
@@ -866,7 +856,7 @@ export default function QuizPage() {
                       <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                       </svg>
-                      Share Results
+                      {t('share_results')}
                     </span>
                   </button>
                   
@@ -879,7 +869,7 @@ export default function QuizPage() {
                       <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
-                      New Category
+                      {t('new_category')}
                     </span>
                   </button>
                 </div>
@@ -890,11 +880,11 @@ export default function QuizPage() {
                   className="w-full group relative overflow-hidden rounded-xl px-6 py-4 font-semibold bg-gradient-to-r from-indigo-900/40 to-purple-900/40 hover:from-indigo-800/60 hover:to-purple-800/60 border border-indigo-500/20 hover:border-indigo-400/40 backdrop-blur-xl text-white/80 hover:text-white transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-[0_8px_25px_-8px_rgba(99,102,241,0.3)]"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <span className="relative z-10 flex items-center justify-center gap-2">
                     <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                     </svg>
-                    Home
+                    {t('home')}
                   </span>
                 </button>
               </div>
@@ -1113,10 +1103,10 @@ export default function QuizPage() {
               <div className="mx-auto mb-8 h-28 w-28 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center">
                 <svg className="w-14 h-14 text-white/70" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-fuchsia-200 to-pink-200 bg-clip-text text-transparent drop-shadow mb-6">{category.toUpperCase()} Quiz</h1>
-              <p className="text-white/60 max-w-md mx-auto leading-relaxed mb-10">Listen to each hidden music clip and choose the correct song title from the options below. Ready?</p>
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-fuchsia-200 to-pink-200 bg-clip-text text-transparent drop-shadow mb-6">{t('quiz_title', { category: category.toUpperCase() })}</h1>
+              <p className="text-white/60 max-w-md mx-auto leading-relaxed mb-10">{t('quiz_description')}</p>
               <button onClick={startPlaying} className="group relative overflow-hidden rounded-2xl px-10 py-5 font-bold text-lg bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-[#18152e] tracking-wide shadow-lg shadow-fuchsia-500/30 hover:shadow-pink-500/40 transition">
-                <span className="relative z-10 flex items-center gap-2">▶ Start Quiz</span>
+                <span className="relative z-10 flex items-center gap-2">{t('start_quiz')}</span>
                 <span className="absolute inset-0 bg-[linear-gradient(95deg,rgba(255,255,255,0),rgba(255,255,255,0.6)_50%,rgba(255,255,255,0))] opacity-0 group-hover:opacity-60 animate-[cardSheen_2.4s_linear_infinite]" />
               </button>
             </div>
@@ -1132,13 +1122,13 @@ export default function QuizPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-xl tracking-tight">
-                      {quiz.isRevealing ? 'Answer Revealed' : 'Listen & Guess'}
+                      {quiz.isRevealing ? t('answer_revealed') : t('listen_guess')}
                     </h3>
                     <p className="text-white/50 text-sm">
                       {quiz.isRevealing ? (
-                        'Answer revealed'
+                        t('answer_revealed_short')
                       ) : (
-                        `Audio preview playing • ${currentQuestion.startTime}s-${currentQuestion.endTime}s`
+                        t('audio_preview_playing', { start: currentQuestion.startTime, end: currentQuestion.endTime })
                       )}
                     </p>
                   </div>
@@ -1164,7 +1154,7 @@ export default function QuizPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M11 5 6 9H2v6h4l5 4V5Zm5 4v6m4-8v10"/>
                     </svg>
                     <span className="text-xs font-medium text-white/70">
-                      {isMuted ? 'Muted' : `${Math.round(volume)}%`}
+                      {isMuted ? t('muted') : `${Math.round(volume)}%`}
                     </span>
                   </div>
                 </div>
@@ -1272,7 +1262,7 @@ export default function QuizPage() {
               </div>
               <div className="mt-8 flex justify-center">
                 <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold tracking-wider uppercase text-white/60">
-                  {category} • Track {quiz.currentIndex + 1}
+                  {t('track_badge', { category, number: quiz.currentIndex + 1 })}
                 </span>
               </div>
             </div>
@@ -1295,16 +1285,16 @@ export default function QuizPage() {
                 />
               ))}
               {/* Result */}
-              {quiz.isRevealing && (
-                <div className="pt-2 animate-[fadeIn_.4s_ease]">
+                  {quiz.isRevealing && (
+                    <div className="pt-2 animate-[fadeIn_.4s_ease]">
                   {quiz.selected === currentQuestion.correctAnswer ? (
-                    <p className="text-emerald-300 font-semibold flex items-center gap-2"><span>🎉</span> Correct!</p>
+                    <p className="text-emerald-300 font-semibold flex items-center gap-2"><span>🎉</span> {t('correct')}</p>
                   ) : quiz.selected === -1 ? (
-                    <p className="text-rose-300 font-semibold flex items-center gap-2"><span>⏰</span> Time's Up!</p>
+                    <p className="text-rose-300 font-semibold flex items-center gap-2"><span>⏰</span> {t('timesup')}</p>
                   ) : (
-                    <p className="text-rose-300 font-semibold flex items-center gap-2"><span>❌</span> Wrong!</p>
+                    <p className="text-rose-300 font-semibold flex items-center gap-2"><span>❌</span> {t('wrong')}</p>
                   )}
-                  <p className="text-white/60 text-sm mt-2">Answer: <span className="text-white font-semibold">{currentQuestion.choices[currentQuestion.correctAnswer]} - {currentQuestion.artist}</span></p>
+                  <p className="text-white/60 text-sm mt-2">{t('answer_label')} <span className="text-white font-semibold">{currentQuestion.choices[currentQuestion.correctAnswer]} - {currentQuestion.artist}</span></p>
                 </div>
               )}
             </div>
