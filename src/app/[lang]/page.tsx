@@ -4,17 +4,15 @@ import { useLangHref } from "@/components/common/LangLink";
 import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useState } from "react";
 import { getProfile } from "@/lib/profile";
+import { supabase } from '@/lib/supabase';
 import { useI18n } from "@/context/I18nContext";
 import { Hero } from "@/components/home/Hero";
 import { LeaderboardPanel } from "@/components/home/LeaderboardPanel";
 import { FooterDisclaimer } from "@/components/common/LegalDisclaimer";
 
+// initial placeholder while fetching
 const mockLeaderboard = [
-  { username: "Jisoo", score: 10 },
-  { username: "Minho", score: 9 },
-  { username: "Somi", score: 8 },
-  { username: "Taeyang", score: 7 },
-  { username: "Yuna", score: 6 }
+  { username: "Loading...", score: 0 }
 ];
 
 export default function Home() {
@@ -25,6 +23,60 @@ export default function Home() {
   const [leaderboard, setLeaderboard] = useState(mockLeaderboard);
 
   useEffect(() => { if (user) getProfile(user.id).then(setProfile); }, [user]);
+
+  // Fetch real leaderboard (casual_high_score from profiles)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Only select columns we expect to exist in the DB to avoid 400 errors
+        const resp = await supabase
+          .from('profiles')
+          .select('id, username, casual_high_score');
+
+        // Supabase client may return error at resp.error
+        const data = (resp as any).data;
+        const error = (resp as any).error;
+
+        if (error) {
+          console.warn('Supabase returned error while fetching leaderboard:', error);
+          // fallback to empty leaderboard
+          if (!cancelled) setLeaderboard([]);
+          return;
+        }
+
+        if (cancelled) return;
+
+        const entries = (data || [])
+          .filter((r: any) => r.casual_high_score && r.casual_high_score > 0)
+          .sort((a: any, b: any) => b.casual_high_score - a.casual_high_score)
+          .slice(0, 50)
+          .map((r: any) => ({ username: r.username || 'User', score: r.casual_high_score || 0 }));
+
+        setLeaderboard(entries);
+      } catch (err) {
+        console.error('Failed to load leaderboard — unexpected error:', err);
+        if (!cancelled) setLeaderboard([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Ensure current user's profile appears in leaderboard list (even if not in top results)
+  useEffect(() => {
+  if (!profile) return;
+  // If leaderboard hasn't loaded yet, skip
+  if (!leaderboard || leaderboard.length === 0) return;
+
+  const currentName = profile.username || user?.email || 'User';
+  const exists = leaderboard.some((e: any) => e.username === currentName);
+  if (!exists) {
+    const userEntry = { username: currentName, score: profile.casual_high_score || 0 };
+    const merged = [...leaderboard.filter((e:any)=> e.username !== 'Loading...'), userEntry]
+      .sort((a,b)=> b.score - a.score);
+    setLeaderboard(merged);
+  }
+  }, [profile, leaderboard]);
 
   const loginHref = useLangHref("/auth");
   const modeHref = useLangHref("/mode");
@@ -45,7 +97,7 @@ export default function Home() {
       >
         <div className="w-full flex justify-center">
           <div className="w-full max-w-3xl">
-            <LeaderboardPanel entries={leaderboard} loggedIn={!!user} />
+            <LeaderboardPanel entries={leaderboard} loggedIn={!!user} currentUsername={profile?.username} />
           </div>
         </div>
       </Hero>

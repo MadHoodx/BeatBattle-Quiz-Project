@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useI18n } from '@/context/I18nContext';
+import { useAuth } from '@/context/AuthContext';
+import { getProfile, updateProfile } from '@/lib/profile';
 import ChoiceButton from "@/components/quiz/ChoiceButton";
 import LegalDisclaimer from "@/components/common/LegalDisclaimer";
 
@@ -53,12 +55,17 @@ function Atmosphere() {
 
 export default function QuizPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const lang = params?.lang || "en";
   const category = searchParams?.get('category') || 'kpop';
   const difficulty = searchParams?.get('difficulty') || 'casual';
+
+  // Per-difficulty timing: hardcore mode listens for 2s and gives 3s to answer
+  const questionDuration = difficulty === 'hardcore' ? 3 : 15;
+  const audioPreviewDuration = difficulty === 'hardcore' ? 2 : undefined;
 
   const [quiz, setQuiz] = useState<QuizState>({
     questions: [],
@@ -69,7 +76,7 @@ export default function QuizPage() {
     isPlaying: false,
     isRevealing: false,
     isFinished: false,
-    timeLeft: 15,
+  timeLeft: questionDuration,
     // Statistics
     correctAnswers: 0,
     wrongAnswers: 0,
@@ -84,28 +91,31 @@ export default function QuizPage() {
   const [volume, setVolume] = useState(75); // Volume state (0-100)
   const [isMuted, setIsMuted] = useState(false); // Mute state
   const [volumeUpdateTimeout, setVolumeUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [smoothTimeLeft, setSmoothTimeLeft] = useState(15); // For ultra-smooth progress
+  const [smoothTimeLeft, setSmoothTimeLeft] = useState(questionDuration); // For ultra-smooth progress
   const [bonusTime, setBonusTime] = useState(0); 
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now()); // Track question start time
   const [iframeKey, setIframeKey] = useState(0); // Force iframe refresh
+  const previewTimeoutRef = useRef<number | null>(null);
+  const [isInPreview, setIsInPreview] = useState(false);
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
 
   // Calculate points based on time remaining (100 points max per question)
   const calculateTimePoints = (timeRemaining: number): number => {
-    // 15 seconds = 100 points, linear decrease
-    // Formula: (timeRemaining / 15) * 100
-    const points = Math.round((timeRemaining / 15) * 100);
+    // Max seconds depends on difficulty (e.g. 3s for hardcore, 15s otherwise)
+    const maxTime = questionDuration;
+    const points = Math.round((timeRemaining / maxTime) * 100);
     return Math.max(0, Math.min(100, points)); // Ensure between 0-100
   };
 
   // Get performance rating based on average points per question
+  // Adjusted thresholds so moderate performance (e.g. 60% / 3/5) is rewarded as "Not Bad!" instead of "Keep Trying"
   const getPerformanceRating = (avgPoints: number) => {
     if (avgPoints >= 95) return { emoji: "👑", title: "LEGENDARY!", rank: "S+", color: "from-yellow-200 via-amber-300 to-orange-400" };
     if (avgPoints >= 85) return { emoji: "🏆", title: "Excellent!", rank: "A", color: "from-emerald-300 via-green-400 to-teal-400" };
     if (avgPoints >= 75) return { emoji: "🥇", title: "Great Job!", rank: "B", color: "from-blue-300 via-cyan-400 to-indigo-400" };
     if (avgPoints >= 65) return { emoji: "🥈", title: "Good Work!", rank: "C", color: "from-purple-300 via-violet-400 to-fuchsia-400" };
-    if (avgPoints >= 50) return { emoji: "🥉", title: "Not Bad!", rank: "D", color: "from-orange-300 via-amber-400 to-yellow-400" };
+    if (avgPoints >= 60) return { emoji: "🥉", title: "Not Bad!", rank: "D", color: "from-orange-300 via-amber-400 to-yellow-400" };
     return { emoji: "📚", title: "Keep Trying!", rank: "F", color: "from-slate-300 via-gray-400 to-zinc-400" };
   };
 
@@ -173,7 +183,7 @@ export default function QuizPage() {
 
   // Ultra-smooth timer effect with 50ms precision
   useEffect(() => {
-    if (quiz.isPlaying && quiz.timeLeft > 0 && !quiz.isRevealing) {
+    if (quiz.isPlaying && quiz.timeLeft > 0 && !quiz.isRevealing && !isInPreview) {
       // Update display timer every 1 second
       const displayTimer = setTimeout(() => {
         setQuiz(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
@@ -196,6 +206,13 @@ export default function QuizPage() {
       handleTimeUp();
     }
   }, [quiz.isPlaying, quiz.timeLeft, quiz.isRevealing]);
+  
+  // Cleanup preview timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (previewTimeoutRef.current) window.clearTimeout(previewTimeoutRef.current);
+    };
+  }, []);
 
   // Bonus time countdown effect
   useEffect(() => {
@@ -390,7 +407,6 @@ export default function QuizPage() {
       })
     }));
 
-    // Always give 6 seconds of additional listening time regardless of answer
     setBonusTime(6);
     
     // Proceed to next question after 6s bonus + 2s reveal = 8s total
@@ -398,6 +414,7 @@ export default function QuizPage() {
       nextQuestion();
     }, 8000);
   };
+
 
   const nextQuestion = () => {
     // Force stop any playing music
@@ -417,6 +434,21 @@ export default function QuizPage() {
     if (nextIndex >= quiz.questions.length) {
       // Quiz finished
       setQuiz(prev => ({ ...prev, isFinished: true }));
+      // Persist casual high score (non-blocking)
+      (async () => {
+        try {
+          if (difficulty === 'casual' && user) {
+            const profile = await getProfile(user.id);
+            const existing = profile?.casual_high_score ?? 0;
+            const newScore = quiz.totalPoints ?? 0;
+            if (newScore > (existing ?? 0)) {
+              await updateProfile(user.id, { casual_high_score: newScore });
+            }
+          }
+        } catch (e) {
+          console.error('Failed to persist casual high score', e);
+        }
+      })();
     } else {
       // Force refresh iframe for clean transition
       setIframeKey(prev => prev + 1);
@@ -428,12 +460,27 @@ export default function QuizPage() {
         selected: null,
         isRevealing: false,
         isPlaying: true,
-        timeLeft: 15
+        timeLeft: questionDuration
       }));
-      setSmoothTimeLeft(15); // Reset smooth timer for next question
+      setSmoothTimeLeft(questionDuration); // Reset smooth timer for next question
       setBonusTime(0); // Reset bonus time
       setQuestionStartTime(Date.now()); // Reset question timer
       setShowPointsAnimation(false); // Reset points animation
+      // If hardcore preview is enabled, start preview gating
+      if (audioPreviewDuration) {
+        setIsInPreview(true);
+        if (previewTimeoutRef.current) window.clearTimeout(previewTimeoutRef.current);
+        previewTimeoutRef.current = window.setTimeout(() => {
+          setIsInPreview(false);
+          // reset smooth timer so segments start full and animate down
+          setSmoothTimeLeft(questionDuration);
+          // after preview ends, ensure video is paused to avoid overlap (best-effort)
+          const iframe = document.querySelector('iframe[title="Music Clip"]') as HTMLIFrameElement;
+          if (iframe && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch (e) {}
+          }
+        }, audioPreviewDuration * 1000);
+      }
     }
   };
 
@@ -441,11 +488,23 @@ export default function QuizPage() {
     setQuiz(prev => ({ 
       ...prev, 
       isPlaying: true, 
-      timeLeft: 15 
+      timeLeft: questionDuration 
     }));
-    setSmoothTimeLeft(15); // Reset smooth timer
+    setSmoothTimeLeft(questionDuration); // Reset smooth timer
     setBonusTime(0); // Reset bonus time
     setQuestionStartTime(Date.now()); // Start timing first question
+    if (audioPreviewDuration) {
+      setIsInPreview(true);
+      if (previewTimeoutRef.current) window.clearTimeout(previewTimeoutRef.current);
+      previewTimeoutRef.current = window.setTimeout(() => {
+        setIsInPreview(false);
+        // Pause after preview to avoid overlap
+        const iframe = document.querySelector('iframe[title="Music Clip"]') as HTMLIFrameElement;
+        if (iframe && iframe.contentWindow) {
+          try { iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch (e) {}
+        }
+      }, audioPreviewDuration * 1000);
+    }
   };
 
   const restartQuiz = async () => {
@@ -459,8 +518,8 @@ export default function QuizPage() {
       isRevealing: false,
       isFinished: false,
       isPlaying: false,
-      timeLeft: 15,
-      // Reset statistics
+  timeLeft: questionDuration,
+  // Reset statistics
       correctAnswers: 0,
       wrongAnswers: 0,
       timeoutAnswers: 0,
@@ -468,7 +527,7 @@ export default function QuizPage() {
       questionTimes: [],
       questionPoints: []
     }));
-    setSmoothTimeLeft(15);
+  setSmoothTimeLeft(questionDuration);
     setBonusTime(0);
     setQuestionStartTime(Date.now());
     setShowPointsAnimation(false);
@@ -591,6 +650,30 @@ export default function QuizPage() {
     }
   };
 
+  // Replay the current clip: seek to startTime and play for audioPreviewDuration (if set) or full clip
+  const replayClip = () => {
+    const iframe = document.querySelector('iframe[title="Music Clip"]') as HTMLIFrameElement | null;
+    if (!iframe || !iframe.contentWindow) return;
+
+    try {
+      // Seek to the question start time
+      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'seekTo', args: [currentQuestion.startTime, true] }), '*');
+      // Ensure volume is set correctly
+      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [isMuted ? 0 : volume] }), '*');
+      // Play
+      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+
+      // If a preview duration is configured, pause after that duration
+      if (audioPreviewDuration) {
+        window.setTimeout(() => {
+          try { iframe.contentWindow!.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*'); } catch (e) {}
+        }, audioPreviewDuration * 1000);
+      }
+    } catch (e) {
+      // Silently fail if iframe can't be controlled
+    }
+  };
+
   const LoadingScreen = (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#070a18] text-white flex items-center justify-center">
       <Atmosphere />
@@ -648,8 +731,18 @@ export default function QuizPage() {
     const maxPossiblePoints = quiz.questions.length * 100;
     const scorePercentage = Math.round((quiz.totalPoints / maxPossiblePoints) * 100);
     
-    // Use new performance rating based on average points
-    const performance = getPerformanceRating(avgPointsPerQuestion);
+    // Use performance rating based on number of correct answers (clearer UX)
+    // 5 correct -> Legendary, 4 -> Great/Excellent, 3 -> Not Bad, <3 -> Keep Trying
+    const getPerformanceByCorrect = (correctCount: number, totalQuestions: number) => {
+      const ratio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
+      if (correctCount === totalQuestions && totalQuestions > 0) return { emoji: "👑", title: "LEGENDARY!", rank: "S+", color: "from-yellow-200 via-amber-300 to-orange-400" };
+      if (ratio >= 0.8) return { emoji: "🏆", title: "Excellent!", rank: "A", color: "from-emerald-300 via-green-400 to-teal-400" };
+      if (ratio >= 0.6) return { emoji: "🥇", title: "Great Job!", rank: "B", color: "from-blue-300 via-cyan-400 to-indigo-400" };
+      if (ratio >= 0.5) return { emoji: "🥈", title: "Not Bad!", rank: "C", color: "from-purple-300 via-violet-400 to-fuchsia-400" };
+      if (ratio >= 0.3) return { emoji: "🥉", title: "Getting There!", rank: "D", color: "from-orange-300 via-amber-400 to-yellow-400" };
+      return { emoji: "📚", title: "Keep Trying!", rank: "F", color: "from-slate-300 via-gray-400 to-zinc-400" };
+    };
+    const performance = getPerformanceByCorrect(quiz.correctAnswers, quiz.questions.length);
     
     return (
       <main className="relative min-h-screen w-full overflow-hidden bg-[#070a18] text-white flex items-center justify-center py-8">
@@ -709,76 +802,85 @@ export default function QuizPage() {
                     {quiz.totalPoints}<span className="text-white/30 text-4xl md:text-5xl"> pts</span>
                   </div>
                   
-                  {/* Floating glow effect */}
-                  <div className={`absolute inset-0 text-8xl md:text-9xl font-black bg-gradient-to-r ${performance.color} bg-clip-text text-transparent blur-xl opacity-20 animate-pulse`}>
-                    {quiz.totalPoints}<span className="text-white/10"> pts</span>
-                  </div>
-                </div>
-                
-                <div className="flex justify-center gap-8 text-center mb-4">
-                  <div>
-                    <div className={`text-2xl md:text-3xl font-bold bg-gradient-to-r ${performance.color} bg-clip-text text-transparent`}>
-                      {avgPointsPerQuestion}
-                    </div>
-                    <div className="text-white/60 text-sm">Avg per Question</div>
-                  </div>
-                  <div>
-                    <div className={`text-2xl md:text-3xl font-bold bg-gradient-to-r ${performance.color} bg-clip-text text-transparent`}>
-                      {scorePercentage}%
-                    </div>
-                    <div className="text-white/60 text-sm">Total Efficiency</div>
-                  </div>
-                </div>
-                
-                {/* Progress Bar Animation */}
-                <div className="relative w-full h-3 rounded-full bg-white/10 overflow-hidden">
-                  <div 
-                    className={`h-full bg-gradient-to-r ${performance.color} rounded-full transition-all duration-2000 ease-out shadow-lg`}
-                    style={{ width: `${scorePercentage}%` }}
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-r ${performance.color} opacity-30 animate-pulse rounded-full`} />
-                </div>
-              </div>
-
-              {/* Premium Statistics Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10 animate-[fadeIn_1s_ease_.9s_both]">
-                
-                {/* Time Analysis */}
-                <div className="group p-6 rounded-2xl bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent border border-blue-400/20 hover:border-blue-400/40 transition-all duration-500 hover:shadow-[0_20px_40px_-10px_rgba(59,130,246,0.3)]">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400/20 to-cyan-400/20 border border-blue-400/30 flex items-center justify-center">
-                      <span className="text-xl">⏱️</span>
-                    </div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-blue-200 transition-colors">{t('time_statistics')}</h3>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-white/5">
-                      <span className="text-white/70 text-sm">Total Time:</span>
-                      <span className="text-white font-semibold">
-                        {totalMinutes > 0 ? `${totalMinutes}m ` : ''}{totalSeconds}s
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-white/5">
-                      <span className="text-white/70 text-sm">Average per Question:</span>
-                      <span className="text-blue-300 font-semibold">{avgTimePerQuestion.toFixed(1)}s</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-white/5">
-                      <span className="text-white/70 text-sm">Fastest Answer:</span>
-                      <span className="text-cyan-300 font-semibold">
-                        {fastestTime > 0 ? `${fastestTime.toFixed(1)}s` : '-'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Answer Breakdown */}
-                <div className="group p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-green-500/5 to-transparent border border-emerald-400/20 hover:border-emerald-400/40 transition-all duration-500 hover:shadow-[0_20px_40px_-10px_rgba(16,185,129,0.3)]">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-green-400/20 border border-emerald-400/30 flex items-center justify-center">
-                      <span className="text-xl">🎯</span>
-                    </div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-emerald-200 transition-colors">{t('answer_breakdown')}</h3>
+                  {/* Center - Timer (Hero Element) */}
+                  <div className="relative group">
+                    {/* Hide the timer on the finished results card to avoid showing leftover countdown (bugfix). Only render during active quiz flow. */}
+                    {!quiz.isFinished && (
+                      difficulty === 'hardcore' ? (
+                        // Render an empty spacer to preserve layout but hide the circular hero timer for hardcore mode
+                        <div className="w-20 h-20 md:w-24 md:h-24" aria-hidden="true" />
+                      ) : (
+                        <>
+                          <div className={`relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full transition-all duration-300 ${
+                            quiz.timeLeft <= 5 
+                              ? 'bg-gradient-to-br from-rose-500/30 to-red-600/20 shadow-[0_0_40px_rgba(244,63,94,0.5)]' 
+                              : quiz.timeLeft <= 10
+                              ? 'bg-gradient-to-br from-amber-500/30 to-orange-600/20 shadow-[0_0_40px_rgba(245,158,11,0.5)]'
+                              : 'bg-gradient-to-br from-fuchsia-500/30 to-pink-600/20 shadow-[0_0_40px_rgba(217,70,239,0.5)]'
+                          } backdrop-blur-xl border-2 ${
+                            quiz.timeLeft <= 5 ? 'border-rose-400/40' : quiz.timeLeft <= 10 ? 'border-amber-400/40' : 'border-fuchsia-400/40'
+                          } hover:scale-105 transition-transform duration-200`}>
+                      
+                            {/* Timer display (standard for all modes) */}
+                            <div className="text-center relative z-10">
+                              <div className={`text-2xl md:text-3xl font-black font-mono tracking-tight ${
+                                quiz.timeLeft <= 5 ? 'text-rose-100' : quiz.timeLeft <= 10 ? 'text-amber-100' : 'text-fuchsia-100'
+                              } drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition-colors duration-300`}>
+                                {quiz.timeLeft}
+                              </div>
+                              <div className="text-[8px] md:text-[10px] font-bold text-white/70 uppercase tracking-wider -mt-1">SEC</div>
+                            </div>
+                      
+                            {/* Inner glow effect */}
+                            <div className={`absolute inset-2 rounded-full ${
+                              quiz.timeLeft <= 5 
+                                ? 'bg-gradient-to-br from-rose-400/20 to-transparent'
+                                : quiz.timeLeft <= 10
+                                ? 'bg-gradient-to-br from-amber-400/20 to-transparent'
+                                : 'bg-gradient-to-br from-fuchsia-400/20 to-transparent'
+                            } blur-sm`} />
+                          </div>
+                          {/* Circular progress timer - smooth countdown */}
+                          <div className="absolute inset-0 w-20 h-20 md:w-24 md:h-24">
+                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 96 96">
+                              {/* Background circle */}
+                              <circle
+                                cx="48"
+                                cy="48"
+                                r="44"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                fill="none"
+                                className="text-white/10"
+                              />
+                              {/* Progress circle */}
+                              <circle
+                                cx="48"
+                                cy="48"
+                                r="44"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                fill="none"
+                                strokeDasharray={`${2 * Math.PI * 44}`}
+                                strokeDashoffset={`${2 * Math.PI * 44 * (1 - (smoothTimeLeft / 15))}`}
+                                className={`transition-all duration-100 ease-linear ${
+                                  quiz.timeLeft <= 5 
+                                    ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]' 
+                                    : quiz.timeLeft <= 10 
+                                    ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                                    : 'text-fuchsia-400 drop-shadow-[0_0_8px_rgba(217,70,239,0.6)]'
+                                }`}
+                                strokeLinecap="round"
+                                style={{
+                                  filter: 'drop-shadow(0 0 4px currentColor)',
+                                  transition: quiz.isRevealing ? 'none' : 'stroke-dashoffset 100ms linear'
+                                }}
+                              />
+                            </svg>
+                          </div>
+                        </>
+                      )
+                    )}
                   </div>
                   
                   <div className="space-y-3">
@@ -966,76 +1068,79 @@ export default function QuizPage() {
 
             {/* Center - Timer (Hero Element) */}
             <div className="relative group">
-              <div className={`relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full transition-all duration-300 ${
-                quiz.timeLeft <= 5 
-                  ? 'bg-gradient-to-br from-rose-500/30 to-red-600/20 shadow-[0_0_40px_rgba(244,63,94,0.5)]' 
-                  : quiz.timeLeft <= 10
-                  ? 'bg-gradient-to-br from-amber-500/30 to-orange-600/20 shadow-[0_0_40px_rgba(245,158,11,0.5)]'
-                  : 'bg-gradient-to-br from-fuchsia-500/30 to-pink-600/20 shadow-[0_0_40px_rgba(217,70,239,0.5)]'
-              } backdrop-blur-xl border-2 ${
-                quiz.timeLeft <= 5 ? 'border-rose-400/40' : quiz.timeLeft <= 10 ? 'border-amber-400/40' : 'border-fuchsia-400/40'
-              } hover:scale-105 transition-transform duration-200`}>
-                
-                {/* Timer display */}
-                <div className="text-center relative z-10">
-                  <div className={`text-2xl md:text-3xl font-black font-mono tracking-tight ${
-                    quiz.timeLeft <= 5 ? 'text-rose-100' : quiz.timeLeft <= 10 ? 'text-amber-100' : 'text-fuchsia-100'
-                  } drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition-colors duration-300`}>
-                    {quiz.timeLeft}
-                  </div>
-                  <div className="text-[8px] md:text-[10px] font-bold text-white/70 uppercase tracking-wider -mt-1">
-                    SEC
-                  </div>
-                </div>
-                
-                {/* Inner glow effect */}
-                <div className={`absolute inset-2 rounded-full ${
-                  quiz.timeLeft <= 5 
-                    ? 'bg-gradient-to-br from-rose-400/20 to-transparent'
-                    : quiz.timeLeft <= 10
-                    ? 'bg-gradient-to-br from-amber-400/20 to-transparent'
-                    : 'bg-gradient-to-br from-fuchsia-400/20 to-transparent'
-                } blur-sm`} />
-              </div>
-              
-              {/* Circular progress timer - smooth countdown */}
-              <div className="absolute inset-0 w-20 h-20 md:w-24 md:h-24">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 96 96">
-                  {/* Background circle */}
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="44"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    fill="none"
-                    className="text-white/10"
-                  />
-                  {/* Progress circle */}
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="44"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    fill="none"
-                    strokeDasharray={`${2 * Math.PI * 44}`}
-                    strokeDashoffset={`${2 * Math.PI * 44 * (1 - (smoothTimeLeft / 15))}`}
-                    className={`transition-all duration-100 ease-linear ${
+              {difficulty === 'hardcore' ? (
+                <div className="w-20 h-20 md:w-24 md:h-24" aria-hidden="true" />
+              ) : (
+                <>
+                  <div className={`relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full transition-all duration-300 ${
+                    quiz.timeLeft <= 5 
+                      ? 'bg-gradient-to-br from-rose-500/30 to-red-600/20 shadow-[0_0_40px_rgba(244,63,94,0.5)]' 
+                      : quiz.timeLeft <= 10
+                      ? 'bg-gradient-to-br from-amber-500/30 to-orange-600/20 shadow-[0_0_40px_rgba(245,158,11,0.5)]'
+                      : 'bg-gradient-to-br from-fuchsia-500/30 to-pink-600/20 shadow-[0_0_40px_rgba(217,70,239,0.5)]'
+                  } backdrop-blur-xl border-2 ${
+                    quiz.timeLeft <= 5 ? 'border-rose-400/40' : quiz.timeLeft <= 10 ? 'border-amber-400/40' : 'border-fuchsia-400/40'
+                  } hover:scale-105 transition-transform duration-200`}>
+                    
+                    {/* Timer display (standard for all modes) */}
+                    <div className="text-center relative z-10">
+                      <div className={`text-2xl md:text-3xl font-black font-mono tracking-tight ${
+                        quiz.timeLeft <= 5 ? 'text-rose-100' : quiz.timeLeft <= 10 ? 'text-amber-100' : 'text-fuchsia-100'
+                      } drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition-colors duration-300`}>
+                        {quiz.timeLeft}
+                      </div>
+                      <div className="text-[8px] md:text-[10px] font-bold text-white/70 uppercase tracking-wider -mt-1">SEC</div>
+                    </div>
+                    
+                    {/* Inner glow effect */}
+                    <div className={`absolute inset-2 rounded-full ${
                       quiz.timeLeft <= 5 
-                        ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]' 
-                        : quiz.timeLeft <= 10 
-                        ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]'
-                        : 'text-fuchsia-400 drop-shadow-[0_0_8px_rgba(217,70,239,0.6)]'
-                    }`}
-                    strokeLinecap="round"
-                    style={{
-                      filter: 'drop-shadow(0 0 4px currentColor)',
-                      transition: quiz.isRevealing ? 'none' : 'stroke-dashoffset 100ms linear'
-                    }}
-                  />
-                </svg>
-              </div>
+                        ? 'bg-gradient-to-br from-rose-400/20 to-transparent'
+                        : quiz.timeLeft <= 10
+                        ? 'bg-gradient-to-br from-amber-400/20 to-transparent'
+                        : 'bg-gradient-to-br from-fuchsia-400/20 to-transparent'
+                    } blur-sm`} />
+                  </div>
+                  {/* Circular progress timer - smooth countdown */}
+                  <div className="absolute inset-0 w-20 h-20 md:w-24 md:h-24">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 96 96">
+                      {/* Background circle */}
+                      <circle
+                        cx="48"
+                        cy="48"
+                        r="44"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        fill="none"
+                        className="text-white/10"
+                      />
+                      {/* Progress circle */}
+                      <circle
+                        cx="48"
+                        cy="48"
+                        r="44"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        fill="none"
+                        strokeDasharray={`${2 * Math.PI * 44}`}
+                        strokeDashoffset={`${2 * Math.PI * 44 * (1 - (smoothTimeLeft / 15))}`}
+                        className={`transition-all duration-100 ease-linear ${
+                          quiz.timeLeft <= 5 
+                            ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]' 
+                            : quiz.timeLeft <= 10 
+                            ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                            : 'text-fuchsia-400 drop-shadow-[0_0_8px_rgba(217,70,239,0.6)]'
+                        }`}
+                        strokeLinecap="round"
+                        style={{
+                          filter: 'drop-shadow(0 0 4px currentColor)',
+                          transition: quiz.isRevealing ? 'none' : 'stroke-dashoffset 100ms linear'
+                        }}
+                      />
+                    </svg>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Right side - Professional Score & Performance */}
@@ -1236,16 +1341,27 @@ export default function QuizPage() {
                   {isMuted ? 'Muted' : `${Math.round(volume)}%`}
                 </span>
               </div>
-              {/* Ultra-smooth Progress Bar */}
-              <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden mb-6">
-                <div 
-                  className="h-full bg-gradient-to-r from-fuchsia-400 via-pink-500 to-violet-500 rounded-full" 
-                  style={{ 
-                    width: `${((15 - smoothTimeLeft) / 15) * 100}%`,
-                    transition: quiz.isRevealing ? 'none' : 'width 50ms linear'
-                  }} 
-                />
-              </div>
+              {/* Ultra-smooth Progress Bar (hidden in hardcore; replaced by Replay button) */}
+              {difficulty !== 'hardcore' ? (
+                <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden mb-6">
+                  <div 
+                    className="h-full bg-gradient-to-r from-fuchsia-400 via-pink-500 to-violet-500 rounded-full" 
+                    style={{ 
+                      width: `${((questionDuration - smoothTimeLeft) / questionDuration) * 100}%`,
+                      transition: quiz.isRevealing ? 'none' : 'width 50ms linear'
+                    }} 
+                  />
+                </div>
+              ) : (
+                <div className="mb-6 flex items-center justify-center">
+                  <button
+                    onClick={replayClip}
+                    className="px-5 py-2 rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white font-semibold shadow-lg hover:scale-[1.02] transition-transform duration-150"
+                  >
+                    Replay
+                  </button>
+                </div>
+              )}
               {/* Hidden YouTube Player with Bonus Time Support - Improved UX */}
               <div className="hidden">
                 <iframe

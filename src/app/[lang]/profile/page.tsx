@@ -33,8 +33,8 @@ export default function ProfilePage() {
           <div className="text-white/70 text-sm">{user.email}</div>
         </div>
         <div className="mb-6">
-          <div className="font-semibold">{t('highscore_soon')}</div>
-          <div className="text-2xl text-purple-300 font-bold">-</div>
+          <div className="font-semibold">{t('casual_high_score')}</div>
+          <div className="text-2xl text-purple-300 font-bold">{profile?.casual_high_score ?? '-'}</div>
         </div>
         <button
           className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 font-semibold text-lg hover:from-pink-600 hover:to-purple-600 transition"

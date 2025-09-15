@@ -10,6 +10,8 @@ export interface UserProfile {
   email: string;
   username?: string;
   avatar_url?: string;
+  // Highest score achieved in casual mode (time-based points)
+  casual_high_score?: number | null;
   created_at: string;
   updated_at: string;
 }

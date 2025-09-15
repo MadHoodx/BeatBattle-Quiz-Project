@@ -6,19 +6,20 @@ import React from "react";
 // used for micro‑interaction (rank change indicators & animations).
 interface Entry { username: string; score: number; avatarUrl?: string; country?: string; _prevScore?: number; _prevRank?: number; }
 
-interface LeaderboardPanelProps { entries: Entry[]; loggedIn: boolean; }
+interface LeaderboardPanelProps { entries: Entry[]; loggedIn: boolean; currentUsername?: string }
 
 // Professional global-style leaderboard with podium + filters
-export function LeaderboardPanel({ entries, loggedIn }: LeaderboardPanelProps) {
+export function LeaderboardPanel({ entries, loggedIn, currentUsername }: LeaderboardPanelProps) {
   const { t } = useI18n();
-  const [scope, setScope] = React.useState<'global' | 'friends'>('global');
   const [period, setPeriod] = React.useState<'day' | 'week' | 'all'>('day');
-  const [sort, setSort] = React.useState<'score' | 'name'>('score');
-  const sorted = [...entries].sort((a,b)=> sort==='score' ? b.score - a.score : a.username.localeCompare(b.username));
-  const filtered = scope==='global' ? sorted : sorted.slice(0, Math.min(3, sorted.length)); // mock friends subset
+  // Always sort by score desc
+  const sorted = [...entries].sort((a,b) => b.score - a.score);
+  const filtered = sorted;
   const top = filtered.slice(0,3);
   const rest = filtered.slice(3);
   const topScore = Math.max(...filtered.map(e=>e.score),1);
+  // Only highlight if currentUsername exists in the entries list
+  const highlightUser = currentUsername && filtered.find(e => e.username === currentUsername) ? currentUsername : undefined;
   return (
     <section aria-labelledby="leaderboard-heading" className="relative rounded-3xl border border-white/10 bg-[#101523]/80 backdrop-blur-xl px-6 md:px-10 pt-7 pb-10 shadow-[0_20px_60px_-25px_rgba(0,0,0,0.65)] overflow-hidden">
       <BackgroundFX />
@@ -34,13 +35,11 @@ export function LeaderboardPanel({ entries, loggedIn }: LeaderboardPanelProps) {
           </div>
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          <ScopeToggle scope={scope} onChange={setScope} />
           <PeriodSelect period={period} onChange={setPeriod} />
-          <SortToggle sort={sort} onChange={setSort} />
         </div>
       </header>
       <Podium entries={top} />
-      <RankList entries={rest} topScore={topScore} highlightUser={loggedIn ? entries[0]?.username : undefined} />
+      <RankList entries={rest} topScore={topScore} highlightUser={highlightUser} />
     </section>
   );
 }
@@ -96,7 +95,9 @@ function Podium({ entries }: { entries: Entry[] }) {
   return (
     <div className="relative grid grid-cols-3 gap-4 mb-8 max-w-xl mx-auto">
       {podiumOrder.map((e, idx) => {
-        const place = idx===0?2: idx===1?1:3; // visual mapping back to rank number
+        // Compute the real place by looking up the entry's index in the original entries array.
+        // This ensures a single entry will be place 1 (instead of mapping by the visual slot index).
+        const place = entries.indexOf(e) + 1;
         const height = place===1? 'h-40': place===2?'h-32':'h-28';
         const gradient = place===1? 'from-amber-400 via-pink-400 to-fuchsia-500': place===2? 'from-slate-300 via-slate-400 to-slate-600':'from-amber-700 via-amber-600 to-amber-500';
         return (
