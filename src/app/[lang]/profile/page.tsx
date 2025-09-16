@@ -14,6 +14,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { t } = useI18n();
+  // compute localized home href once (hooks must be used in the component body)
+  const homeHref = useLangHref('/');
 
   useEffect(() => {
     if (!user) return;
@@ -38,7 +40,7 @@ export default function ProfilePage() {
         </div>
         <button
           className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 font-semibold text-lg hover:from-pink-600 hover:to-purple-600 transition"
-          onClick={async () => { await signOut(); router.push(useLangHref("/") as string); }}
+          onClick={async () => { await signOut(); router.push(homeHref as string); }}
         >
           {t('logout')}
         </button>

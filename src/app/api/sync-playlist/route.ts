@@ -6,8 +6,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { upsertSongFromPlaylistItem } from '@/lib/songs';
 import { SyncPlaylistRequest, SyncPlaylistResponse, isValidCategory, isValidSourceProvider } from '@/types/songs';
+import { verifyAdminFromRequest } from '@/lib/admin';
 
 export async function POST(request: NextRequest) {
+  try {
+    await verifyAdminFromRequest(request);
+  } catch (err: any) {
+    console.warn('Unauthorized sync-playlist request (batch):', err?.message || err);
+    const status = err?.status || 401;
+    return NextResponse.json({ error: err?.message || 'Unauthorized' }, { status });
+  }
   try {
     const body: SyncPlaylistRequest = await request.json();
 

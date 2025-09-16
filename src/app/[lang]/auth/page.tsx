@@ -4,42 +4,73 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLangHref, computeLangHref } from "@/components/common/LangLink";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 
 export default function AuthPage() {
   const { t, lang, availableLangs } = useI18n();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // If user already authenticated, redirect away from /auth
+  if (!loading && user) {
+    // redirect to home (localized)
+    const homeHref = computeLangHref('/', lang, availableLangs) as string;
+    if (typeof window !== 'undefined') router.push(homeHref);
+  }
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const router = useRouter();
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+  setSubmitting(true);
     setError(null);
     setSuccess(null);
-    try {
-  if (mode === 'signup') {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-    // username setup page
-    const usernameHref = computeLangHref("/profile/username", lang, availableLangs) as string;
-    setTimeout(() => router.push(usernameHref), 500);
-      } else {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    setSuccess("Login success! Redirecting...");
-    const homeHref = computeLangHref("/", lang, availableLangs) as string;
-    setTimeout(() => router.push(homeHref), 1000);
+      try {
+        if (mode === 'signup') {
+          const { data, error } = await supabase.auth.signUp({ email, password });
+            if (error) {
+            console.error('Supabase signUp error', error, data);
+            // show detailed error JSON in UI for debugging
+            setError(JSON.stringify(error, Object.getOwnPropertyNames(error)));
+            setSubmitting(false);
+            return;
+          }
+          // attempt server-side upsert to create profile row, then username setup page
+          try {
+            await fetch('/api/profiles/upsert', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ id: data?.user?.id, email: email })
+            });
+          } catch (e) {
+            console.warn('Server upsert after signUp failed', e);
+          }
+          const usernameHref = computeLangHref("/profile/username", lang, availableLangs) as string;
+          setTimeout(() => router.push(usernameHref), 500);
+        } else {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            console.error('Supabase signIn error', error, data);
+            setError(JSON.stringify(error, Object.getOwnPropertyNames(error)));
+            setSubmitting(false);
+            return;
+          }
+          setSuccess("Login success! Redirecting...");
+          const homeHref = computeLangHref("/", lang, availableLangs) as string;
+          setTimeout(() => router.push(homeHref), 1000);
+        }
+      } catch (err: any) {
+        console.error('Unexpected auth handler error', err);
+        setError((err && err.message) || String(err));
+      } finally {
+        setSubmitting(false);
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -77,10 +108,10 @@ export default function AuthPage() {
           {success && <div className="text-green-400 bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-sm">{success}</div>}
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50"
           >
-            {loading ? t('loading') : mode === 'login' ? t('login') : t('create_account')}
+            {isSubmitting ? t('loading') : mode === 'login' ? t('login') : t('create_account')}
           </button>
         </form>
         <div className="mt-6 text-center">

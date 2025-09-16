@@ -1,25 +1,61 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation';
+import { createProfile } from '@/lib/profile'
 
 export default function Auth() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [emailValid, setEmailValid] = useState<boolean | null>(null)
+
+  const validateEmail = (value: string) => {
+    // Simple, practical email regex (covers most common cases)
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(value);
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    
+    // Client-side email validation
+    if (!validateEmail(email)) {
+      setError('กรุณากรอกอีเมลให้ถูกต้อง');
+      setEmailValid(false);
+      setLoading(false);
+      return;
+    }
+    setEmailValid(true);
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { error, data } = await supabase.auth.signUp({
           email,
           password,
         })
         if (error) throw error
+        // Best-effort: ask server to upsert profile row using service-role (avoids RLS issues)
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          const createdUser = userData?.user;
+          if (createdUser) {
+            await fetch('/api/profiles/upsert', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ id: createdUser.id, username: '', casual_high_score: 0 })
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to request server upsert for profile after signUp', e);
+        }
+        // Redirect new users to set a username
+        try {
+          const lang = (typeof document !== 'undefined' && document.cookie.match(/(?:(?:^|.*;\s*)lang\s*\=\s*([^;]*).*$)/)?.[1]) || 'en';
+          router.push(`/${lang}/username`);
+        } catch (e) { /* ignore */ }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -28,7 +64,8 @@ export default function Auth() {
         if (error) throw error
       }
     } catch (error: any) {
-      setError(error.message)
+      // Prefer the explicit message from Supabase, fallback to generic
+      setError(error?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ ลองอีกครั้ง')
     } finally {
       setLoading(false)
     }
@@ -58,6 +95,7 @@ export default function Auth() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              onBlur={(e) => setEmailValid(validateEmail(e.target.value))}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white 
                 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent
                 placeholder:text-white/30"

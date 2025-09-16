@@ -2,12 +2,20 @@ import { NextResponse } from 'next/server';
 import { YouTubePlaylistService } from '@/services/youtube-playlist';
 import { upsertSongFromPlaylistItem, getSongsByCategory, deleteSong } from '@/lib/songs';
 import { supabase, requireServiceRole } from '@/lib/supabase';
+import { verifyAdminFromRequest } from '@/lib/admin';
 import { SongCategory } from '@/types/songs';
 
 const YT_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
 const playlistService = new YouTubePlaylistService(YT_API_KEY);
 
 export async function POST(request: Request) {
+  try {
+    await verifyAdminFromRequest(request);
+  } catch (err: any) {
+    console.warn('Unauthorized sync-playlist request:', err?.message || err);
+    const status = err?.status || 401;
+    return NextResponse.json({ error: err?.message || 'Unauthorized' }, { status });
+  }
   try {
     const body = await request.json();
     console.log('🧭 POST /api/sync-playlist/youtube received body:', JSON.stringify(body));

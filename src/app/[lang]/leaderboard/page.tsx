@@ -1,9 +1,9 @@
-"use server";
 import React from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { LeaderboardPanel } from '@/components/home/LeaderboardPanel';
 
-export default async function LeaderboardPage({ params }: { params: { lang: string } }) {
+export default async function LeaderboardPage(props: any) {
+  const { params } = props || {};
   // Attempt to use the service-role client so we can query the full profiles table reliably.
   let entries: Array<{ username: string; score: number }> = [];
   try {

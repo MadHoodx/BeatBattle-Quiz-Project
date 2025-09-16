@@ -4,8 +4,8 @@ import "@/styles/globals.css";
 import ClientLayout from "@/components/ClientLayout";
 
 export const metadata: Metadata = {
-  title: "SeoulTune Quiz",
-  description: "K-Drama OST Quiz Game",
+  title: "BeatBattle",
+  description: "Music battle quiz — guess songs, compete on leaderboards",
 };
 
 // Next.js 15+ dynamic routes: params must be awaited (async component)

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateSong, deleteSong, getSongById } from '@/lib/songs';
 import { isValidCategory } from '@/types/songs';
+import { verifyAdminFromRequest } from '@/lib/admin';
 
 interface RouteParams {
   params: {
@@ -13,9 +14,11 @@ interface RouteParams {
   };
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: any) {
+  const { params } = context || {};
+  const { id } = (await params) as { id: string } || {};
   try {
-    const song = await getSongById(params.id);
+  const song = await getSongById(id);
     
     if (!song) {
       return NextResponse.json(
@@ -37,7 +40,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: any) {
+  const { params } = context || {};
+  const { id } = (await params) as { id: string } || {};
+  try {
+    await verifyAdminFromRequest(request);
+  } catch (err: any) {
+    console.warn('Unauthorized song update request:', err?.message || err);
+    const status = err?.status || 401;
+    return NextResponse.json({ error: err?.message || 'Unauthorized' }, { status });
+  }
   try {
     const body = await request.json();
 
@@ -64,7 +76,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const song = await updateSong(params.id, {
+  const song = await updateSong(id, {
       source_title: body.source_title,
       source_artist: body.source_artist,
       override_title: body.override_title,
@@ -99,9 +111,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: any) {
+  const { params } = context || {};
+  const { id } = (await params) as { id: string } || {};
   try {
-    await deleteSong(params.id);
+    await verifyAdminFromRequest(request);
+  } catch (err: any) {
+    console.warn('Unauthorized song delete request:', err?.message || err);
+    const status = err?.status || 401;
+    return NextResponse.json({ error: err?.message || 'Unauthorized' }, { status });
+  }
+  try {
+  await deleteSong(id);
 
     return NextResponse.json({
       success: true,

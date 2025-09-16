@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState, useEffect, use } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { 
   getSongsByCategory, 
   getAllCategories, 
@@ -15,6 +16,7 @@ import {
   CATEGORIES 
 } from '@/data';
 import { YouTubePlaylistService } from '../../../services/youtube-playlist';
+import { supabase } from '@/lib/supabase';
 import { PLAYLIST_IDS } from '@/config/playlists';
 
 interface CategoryStatus {
@@ -44,6 +46,42 @@ interface AdminPanelProps {
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
   const { lang } = use(params);
+  const { user, loading: authLoading } = useAuth();
+  // Admin identifiers exposed to the client to allow immediate UI gating.
+  // Set NEXT_PUBLIC_ADMIN_USER_ID or NEXT_PUBLIC_ADMIN_EMAIL in your .env for production.
+  const adminUserId = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
+  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+  useEffect(() => {
+    // Only evaluate after auth finished initializing
+    if (authLoading) return;
+
+    const isDev = process.env.NODE_ENV === 'development';
+
+    // If no admin identity is configured and not in development, block access
+    if (!adminUserId && !adminEmail && !isDev) {
+      console.warn('Admin access attempted but no NEXT_PUBLIC_ADMIN_USER_ID or NEXT_PUBLIC_ADMIN_EMAIL is set.');
+      window.location.href = `/${lang}`;
+      return;
+    }
+
+    // If a user is not signed in, redirect away
+    if (!user) {
+      window.location.href = `/${lang}`;
+      return;
+    }
+
+    // If configured, ensure the current user matches the admin id or email
+    if (adminUserId && user.id !== adminUserId && !isDev) {
+      window.location.href = `/${lang}`;
+      return;
+    }
+
+    if (adminEmail && user.email !== adminEmail && !isDev) {
+      window.location.href = `/${lang}`;
+      return;
+    }
+  }, [authLoading, user, lang]);
   const [categoryStatuses, setCategoryStatuses] = useState<CategoryStatus[]>([]);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
@@ -170,9 +208,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
       // If removeMissing is requested, first ask server for a preview of candidates
       if (removeMissing) {
         addLog('🔎 Previewing candidates to remove...');
+        const session = await supabase.auth.getSession();
+        const token = session?.data?.session?.access_token;
         const previewRes = await fetch('/api/sync-playlist/youtube', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ category, maxResults, removeMissing: true, preview: true })
         });
         const previewJson = await previewRes.json();
@@ -199,9 +239,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
         addLog('🗑️ Admin confirmed delete — running sync and removing missing items...');
       }
 
+      const session2 = await supabase.auth.getSession();
+      const token2 = session2?.data?.session?.access_token;
       const res = await fetch('/api/sync-playlist/youtube', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token2 ? { Authorization: `Bearer ${token2}` } : {}) },
         body: JSON.stringify({ category, maxResults, removeMissing })
       });
 
@@ -271,6 +313,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ params }) => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-400 mx-auto"></div>
           <p className="mt-4 text-lg text-gray-300">Loading Admin Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // While auth context resolves, show a neutral loading.
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-24 w-24 border-b-2 border-blue-400 mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-300">Checking permissions...</p>
         </div>
       </div>
     );
