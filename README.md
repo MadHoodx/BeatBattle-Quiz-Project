@@ -47,13 +47,14 @@ Challenge yourself, set your username, and climb the leaderboards.
 
 ## 📊 Repo Stats
 <p align="center">
-  <img src="[![MadHoodx's GitHub stats](https://github-readme-stats.vercel.app/api?username=MadHoodx)](https://github.com/anuraghazra/github-readme-stats)" />
+  <img src="https://github-readme-stats.vercel.app/api/pin/?username=madhoodx&repo=BeatBattle-Quiz-Project&theme=radical" />
 </p>
 
 ---
 
 ## 📜 License
 MIT © [MadHood]([https://github.com/MadHoodx])
+
 
 
 
