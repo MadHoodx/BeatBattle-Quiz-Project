@@ -4,10 +4,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/languages/top/your-username/beatbattle?style=for-the-badge&color=blue" />
-  <img src="https://img.shields.io/github/last-commit/your-username/beatbattle?style=for-the-badge&color=brightgreen" />
-  <img src="https://img.shields.io/github/stars/your-username/beatbattle?style=for-the-badge&color=yellow" />
-  <img src="https://img.shields.io/github/license/your-username/beatbattle?style=for-the-badge&color=orange" />
+  <img src="https://img.shields.io/github/languages/top/MadHoodx/beatbattle?style=for-the-badge&color=blue" />
+  <img src="https://img.shields.io/github/last-commit/MadHoodx/beatbattle?style=for-the-badge&color=brightgreen" />
+  <img src="https://img.shields.io/github/stars/MadHoodx/beatbattle?style=for-the-badge&color=yellow" />
+  <img src="https://img.shields.io/github/license/MadHoodx/beatbattle?style=for-the-badge&color=orange" />
 </p>
 
 ---
@@ -47,13 +47,14 @@ Challenge yourself, set your username, and climb the leaderboards.
 
 ## 📊 Repo Stats
 <p align="center">
-  <img src="https://github-readme-stats.vercel.app/api/pin/?username=?MadHoodx&repo=beatbattle&theme=radical" />
+  <img src="[![MadHoodx's GitHub stats](https://github-readme-stats.vercel.app/api?username=MadHoodx)](https://github.com/anuraghazra/github-readme-stats)" />
 </p>
 
 ---
 
 ## 📜 License
 MIT © [MadHood]([https://github.com/MadHoodx])
+
 
 
 
