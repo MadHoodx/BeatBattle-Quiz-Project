@@ -39,7 +39,7 @@ Challenge yourself, set your username, and climb the leaderboards.
 
 ## 🖼 Demo / Screenshot
 <p align="center">
-  <a href="[(https://beat-battle-quiz-project.vercel.app/en)" target="_blank">
+  <a href="https://beat-battle-quiz-project.vercel.app" target="_blank">🔗 Click here to view Live Demo</a>
   </a>
 </p>
 
@@ -54,4 +54,5 @@ Challenge yourself, set your username, and climb the leaderboards.
 
 ## 📜 License
 MIT © [Your Name](https://github.com/your-username)
+
 
