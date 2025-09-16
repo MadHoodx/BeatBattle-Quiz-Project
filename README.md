@@ -4,10 +4,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/languages/top/MadHoodx/beat-battle-quiz-project?style=for-the-badge&color=blue" />
-  <img src="https://img.shields.io/github/last-commit/MadHoodx/beat-battle-quiz-project?style=for-the-badge&color=brightgreen" />
-  <img src="https://img.shields.io/github/stars/MadHoodx/beat-battle-quiz-project?style=for-the-badge&color=yellow" />
-  <img src="https://img.shields.io/github/license/MadHoodx/beat-battle-quiz-project?style=for-the-badge&color=orange" />
+  <img src="https://img.shields.io/github/languages/top/MadHoodx/beatbattle-quiz-project?style=for-the-badge&color=blue" />
+  <img src="https://img.shields.io/github/last-commit/MadHoodx/beatbattle-quiz-project?style=for-the-badge&color=brightgreen" />
+  <img src="https://img.shields.io/github/stars/MadHoodx/beatbattle-quiz-project?style=for-the-badge&color=yellow" />
+  <img src="https://img.shields.io/github/license/MadHoodx/beatbattle-quiz-project?style=for-the-badge&color=orange" />
 </p>
 
 ---
@@ -54,6 +54,7 @@ Challenge yourself, set your username, and climb the leaderboards.
 
 ## 📜 License
 MIT © [MadHood]([https://github.com/MadHoodx])
+
 
 
 
